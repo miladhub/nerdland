@@ -4,7 +4,7 @@ import Lib
 import Data.Map (Map, fromList, keys, adjustWithKey)
 import System.Random
 import Control.Monad
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromJust, isJust)
 
 type Player = String
 
@@ -52,29 +52,25 @@ loop world player = do
   putStrLn $ show world
   let players = keys $ stats world
       actions = fmap (turn player) players
-  events <- sequence $ nature : actions
+  maybeEvents <- sequence $ nature : actions
+  let events = fmap fromJust $ filter isJust $ maybeEvents
+      newWorld = foldl think world events
   forM_ events describe
-  let world' = foldl go (Just world) (filter isJust events)
-  loop (fromMaybe world world') player
+  loop newWorld player
+  where
+    turn player name =
+      if player /= name then
+        npc name
+      else
+        pc name
 
-turn :: Player -> Player -> IO (Maybe Event)
-turn player name =
-  if player /= name then
-    npc name
-  else
-    pc name
-
-describe :: Maybe Event -> IO ()
-describe (Just Earthquake) = do
+describe :: Event -> IO ()
+describe Earthquake = do
   putStrLn "Rumble..."
-describe (Just Rain) = do
+describe Rain = do
   putStrLn "It starts raining."
-describe (Just (PlayerAction player action)) = do
+describe (PlayerAction player action) = do
   putStrLn $ "[" ++ player ++ "] " ++ (show action)
-describe _ = return ()
-
-go :: Maybe World -> Maybe Event -> Maybe World
-go world event = (pure think) <*> world <*> event
 
 think :: World -> Event -> World
 think world (PlayerAction player (Move d)) =
