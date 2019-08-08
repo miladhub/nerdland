@@ -4,6 +4,7 @@ import Lib
 import Data.Map (Map, fromList, keys, adjustWithKey)
 import System.Random
 import Control.Monad
+import Data.Maybe (fromMaybe, isJust)
 
 type Player = String
 
@@ -51,10 +52,10 @@ loop world player = do
   putStrLn $ show world
   let players = keys $ stats world
       actions = fmap (turn player) players
-  events <- sequence $ actions ++ [nature]
+  events <- sequence $ nature : actions
   forM_ events describe
-  let world' = foldl go world events
-  loop world' player
+  let world' = foldl go (Just world) (filter isJust events)
+  loop (fromMaybe world world') player
 
 turn :: Player -> Player -> IO (Maybe Event)
 turn player name =
@@ -69,16 +70,23 @@ describe (Just Earthquake) = do
 describe (Just Rain) = do
   putStrLn "It starts raining."
 describe (Just (PlayerAction player action)) = do
-  putStrLn $ (show player) ++ ": " ++ (show action)
+  putStrLn $ "[" ++ player ++ "] " ++ (show action)
 describe _ = return ()
 
-go :: World -> Maybe Event -> World
-go world (Just (PlayerAction player (Move d))) =
-  world { stats = adjustWithKey (move d) player (stats world) }
-go world (Just (PlayerAction player Swing)) =
+go :: Maybe World -> Maybe Event -> Maybe World
+go world event = (pure think) <*> world <*> event
+
+think :: World -> Event -> World
+think world (PlayerAction player (Move d)) =
+  world {
+    stats = adjustWithKey (move d) player (stats world)
+  }
+think world (PlayerAction player Swing) =
   let opponent = head $ filter (/= player) $ keys $ stats world
-  in world { stats = adjustWithKey swing opponent (stats world) }
-go world _ = world
+  in world {
+    stats = adjustWithKey swing opponent (stats world)
+  }
+think world _ = world
 
 move :: Dir -> Player -> Stats -> Stats
 move U _ s = s { x = (x s) + 1 }
@@ -91,13 +99,14 @@ swing _ s = s { life = (life s) - 1 }
 
 pc :: Player -> IO (Maybe Event)
 pc player = do
+  putStr $ player ++ "> "
   a <- getLine
   return $ (PlayerAction player) <$> case a of
     "up"    -> Just $ Move U
     "down"  -> Just $ Move D
     "left"  -> Just $ Move L
     "right" -> Just $ Move R
-    "swing" -> Just $ Swing
+    "swing" -> Just Swing
     _       -> Nothing
 
 npc :: Player -> IO (Maybe Event)
