@@ -4,7 +4,7 @@ import Lib
 import Data.Map (Map, fromList, keys, adjustWithKey)
 import System.Random
 import Control.Monad
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (catMaybes)
 
 type Player = String
 
@@ -41,7 +41,9 @@ initialStats = Stats {
   }
 
 initialWorld = World {
-  stats = fromList $ (,) <$> ["milad", "ogre"] <*> [initialStats]
+  stats = fromList $ (,)
+    <$> ["milad", "ogre"] 
+    <*> [initialStats]
 }
 
 main :: IO ()
@@ -52,10 +54,9 @@ loop world player = do
   putStrLn $ show world
   let players = keys $ stats world
       actions = fmap (turn player) players
-  maybeEvents <- sequence $ nature : actions
-  let events = fmap fromJust $ filter isJust $ maybeEvents
-      newWorld = foldl think world events
+  events <- (fmap catMaybes) $ sequence $ nature : actions
   forM_ events describe
+  let newWorld = foldl think world events
   loop newWorld player
   where
     turn player name =
@@ -65,11 +66,11 @@ loop world player = do
         pc name
 
 describe :: Event -> IO ()
-describe Earthquake = do
+describe Earthquake =
   putStrLn "Rumble..."
-describe Rain = do
+describe Rain =
   putStrLn "It starts raining."
-describe (PlayerAction player action) = do
+describe (PlayerAction player action) =
   putStrLn $ "[" ++ player ++ "] " ++ (show action)
 
 think :: World -> Event -> World
@@ -97,24 +98,26 @@ pc :: Player -> IO (Maybe Event)
 pc player = do
   putStr $ player ++ "> "
   a <- getLine
-  return $ (PlayerAction player) <$> case a of
-    "up"    -> Just $ Move U
-    "down"  -> Just $ Move D
-    "left"  -> Just $ Move L
-    "right" -> Just $ Move R
-    "swing" -> Just Swing
-    _       -> Nothing
+  return $ (PlayerAction player)
+    <$> case a of
+      "up"    -> Just $ Move U
+      "down"  -> Just $ Move D
+      "left"  -> Just $ Move L
+      "right" -> Just $ Move R
+      "swing" -> Just Swing
+      _       -> Nothing
 
 npc :: Player -> IO (Maybe Event)
 npc player = do
   dice <- rollDice
-  return $ (PlayerAction player) <$> case dice of
-    1 -> Just $ Move U
-    2 -> Just $ Move D
-    3 -> Just $ Move L
-    4 -> Just $ Move R
-    5 -> Just Swing
-    _ -> Nothing
+  return $ (PlayerAction player)
+    <$> case dice of
+      1 -> Just $ Move U
+      2 -> Just $ Move D
+      3 -> Just $ Move L
+      4 -> Just $ Move R
+      5 -> Just Swing
+      _ -> Nothing
 
 nature :: IO (Maybe Event)
 nature = do
