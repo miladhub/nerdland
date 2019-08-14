@@ -31,6 +31,12 @@ data Event =
   | Earthquake
   deriving (Eq, Show)
 
+data Cmd =
+    Cmd Action
+  | Help
+  | Other String
+  deriving (Eq, Show)
+
 data Dir = U | D | L | R
   deriving (Eq, Show)
 
@@ -97,15 +103,26 @@ swing _ s = s { life = (life s) - 1 }
 pc :: Player -> IO (Maybe Event)
 pc player = do
   putStr $ player ++ "> "
-  a <- getLine
-  return $ (PlayerAction player)
-    <$> case a of
-      "up"    -> Just $ Move U
-      "down"  -> Just $ Move D
-      "left"  -> Just $ Move L
-      "right" -> Just $ Move R
-      "swing" -> Just Swing
-      _       -> Nothing
+  s <- getLine
+  case (cmd s) of
+    (Cmd action) ->
+      return $ Just (PlayerAction player action)
+    Help         -> do
+      putStrLn "Commands: up, down, left, right, swing, help"
+      return Nothing
+    (Other o)    -> do
+      putStrLn $ "Bad command: " ++ o
+      return Nothing
+
+cmd :: String -> Cmd
+cmd s = case s of
+  "up"    -> Cmd $ Move U
+  "down"  -> Cmd $ Move D
+  "left"  -> Cmd $ Move L
+  "right" -> Cmd $ Move R
+  "swing" -> Cmd Swing
+  "help"  -> Help
+  _       -> Other s
 
 npc :: Player -> IO (Maybe Event)
 npc player = do
