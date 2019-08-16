@@ -103,21 +103,19 @@ swing _ s = s { life = (life s) - 1 }
 
 pc :: Player -> IO (Maybe Event)
 pc player = runMaybeT $ do
-  input <- MaybeT $ do
-    putStr $ player ++ "> "
-    timeout 3000000 getLine
+  input <- MaybeT $ getInput player
   command <- return $ parseCommand input
-  event <- MaybeT $ processCommand player command
-  return event
+  MaybeT $ processCommand player command
 
-processCommand :: Player -> Cmd -> IO (Maybe Event)
-processCommand player (Cmd action) = return $ Just (PlayerAction player action)
-processCommand player Help         = do
-  putStrLn "Commands: up, down, left, right, swing, help"
-  return Nothing
-processCommand player (Other o)    = do
-  putStrLn $ "Bad command: " ++ o
-  return Nothing
+getInput :: Player -> IO (Maybe String)
+getInput player = do
+  putStr $ player ++ "> "
+  l <- timeout 3000000 getLine
+  case l of
+    (Just i) -> return (Just i)
+    Nothing -> do
+      putStrLn "(aborted)"
+      return Nothing
 
 parseCommand :: String -> Cmd
 parseCommand s = case s of
@@ -128,6 +126,15 @@ parseCommand s = case s of
   "swing" -> Cmd Swing
   "help"  -> Help
   _       -> Other s
+
+processCommand :: Player -> Cmd -> IO (Maybe Event)
+processCommand player (Cmd action) = return $ Just (PlayerAction player action)
+processCommand player Help         = do
+  putStrLn "Commands: up, down, left, right, swing, help"
+  return Nothing
+processCommand player (Other o)    = do
+  putStrLn $ "Bad command: " ++ o
+  return Nothing
 
 npc :: Player -> IO (Maybe Event)
 npc player = do
