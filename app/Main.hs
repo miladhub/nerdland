@@ -17,7 +17,8 @@ data Stats = Stats {
   deriving (Show, Eq)
 
 data World = World {
-    stats :: Map Player Stats
+    stats   :: Map Player Stats
+  , stopped :: Bool
   }
   deriving (Show, Eq)
 
@@ -30,11 +31,13 @@ data Event =
     PlayerAction Player Action
   | Rain
   | Earthquake
+  | WorldStop
   deriving (Eq, Show)
 
 data Cmd =
     Cmd Action
   | Help
+  | Quit
   | Other String
   deriving (Eq, Show)
 
@@ -48,10 +51,11 @@ initialStats = Stats {
   }
 
 initialWorld = World {
-  stats = fromList $ (,)
-    <$> ["milad", "ogre"] 
-    <*> [initialStats]
-}
+    stats    = fromList $ (,)
+      <$> ["milad", "ogre"]
+      <*> [initialStats]
+  , stopped  = False
+  }
 
 main :: IO ()
 main = loop initialWorld "milad"
@@ -64,7 +68,9 @@ loop world player = do
   events <- (fmap catMaybes) $ sequence $ nature : actions
   forM_ events describe
   let newWorld = foldl think world events
-  loop newWorld player
+  if stopped newWorld
+    then putStrLn "Stopping..."
+    else loop newWorld player
   where
     turn player name =
       if player /= name then
@@ -79,6 +85,7 @@ describe Rain =
   putStrLn "It starts raining."
 describe (PlayerAction player action) =
   putStrLn $ "[" ++ player ++ "] " ++ (show action)
+describe _ = return ()
 
 think :: World -> Event -> World
 think world (PlayerAction player (Move d)) =
@@ -90,6 +97,7 @@ think world (PlayerAction player Swing) =
   in world {
     stats = adjustWithKey swing opponent (stats world)
   }
+think world WorldStop = world { stopped = True }
 think world _ = world
 
 move :: Dir -> Player -> Stats -> Stats
@@ -125,14 +133,16 @@ parseCommand s = case s of
   "right" -> Cmd $ Move R
   "swing" -> Cmd Swing
   "help"  -> Help
+  "quit"  -> Quit
   _       -> Other s
 
 processCommand :: Player -> Cmd -> IO (Maybe Event)
 processCommand player (Cmd action) = return $ Just (PlayerAction player action)
-processCommand player Help         = do
-  putStrLn "Commands: up, down, left, right, swing, help"
+processCommand player Help = do
+  putStrLn "Commands: up, down, left, right, swing, help, quit"
   return Nothing
-processCommand player (Other o)    = do
+processCommand player Quit = return $ Just WorldStop
+processCommand player (Other o) = do
   putStrLn $ "Bad command: " ++ o
   return Nothing
 
