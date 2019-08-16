@@ -5,6 +5,7 @@ import Data.Map (Map, fromList, keys, adjustWithKey)
 import System.Random
 import Control.Monad
 import Data.Maybe (catMaybes)
+import System.Timeout
 
 type Player = String
 
@@ -103,19 +104,24 @@ swing _ s = s { life = (life s) - 1 }
 pc :: Player -> IO (Maybe Event)
 pc player = do
   putStr $ player ++ "> "
-  s <- getLine
-  case (cmd s) of
-    (Cmd action) ->
-      return $ Just (PlayerAction player action)
-    Help         -> do
-      putStrLn "Commands: up, down, left, right, swing, help"
-      return Nothing
-    (Other o)    -> do
-      putStrLn $ "Bad command: " ++ o
-      return Nothing
+  ms <- timeout 3000000 getLine
+  case ms of
+    (Just s) -> do
+      let cmd = parseCommand s
+      processCommand player cmd
+    Nothing  -> return Nothing
 
-cmd :: String -> Cmd
-cmd s = case s of
+processCommand :: Player -> Cmd -> IO (Maybe Event)
+processCommand player (Cmd action) = return $ Just (PlayerAction player action)
+processCommand player Help         = do
+  putStrLn "Commands: up, down, left, right, swing, help"
+  return Nothing
+processCommand player (Other o)    = do
+  putStrLn $ "Bad command: " ++ o
+  return Nothing
+
+parseCommand :: String -> Cmd
+parseCommand s = case s of
   "up"    -> Cmd $ Move U
   "down"  -> Cmd $ Move D
   "left"  -> Cmd $ Move L
