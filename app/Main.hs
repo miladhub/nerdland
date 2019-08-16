@@ -17,7 +17,8 @@ data Stats = Stats {
   deriving (Show, Eq)
 
 data World = World {
-    stats   :: Map Player Stats
+    player  :: Player
+  , stats   :: Map Player Stats
   , stopped :: Bool
   }
   deriving (Show, Eq)
@@ -45,32 +46,33 @@ data Dir = U | D | L | R
   deriving (Eq, Show)
 
 initialStats = Stats {
-    x = 10
-  , y = 10
+    x    = 10
+  , y    = 10
   , life = 10
   }
 
 initialWorld = World {
-    stats    = fromList $ (,)
+    player   = "milad"
+  , stats    = fromList $ (,)
       <$> ["milad", "ogre"]
       <*> [initialStats]
   , stopped  = False
   }
 
 main :: IO ()
-main = loop initialWorld "milad"
+main = loop initialWorld
 
-loop :: World -> Player -> IO ()
-loop world player = do
+loop :: World -> IO ()
+loop world = do
   putStrLn $ show world
   let players = keys $ stats world
-      actions = fmap (turn player) players
+      actions = fmap (turn $ player world) players
   events <- (fmap catMaybes) $ sequence $ nature : actions
   forM_ events describe
   let newWorld = foldl think world events
   if stopped newWorld
     then putStrLn "Stopping..."
-    else loop newWorld player
+    else loop newWorld
   where
     turn player name =
       if player /= name then
