@@ -1,11 +1,11 @@
 module Main where
 
-import Lib
 import Data.Map (Map, fromList, keys, adjustWithKey)
-import System.Random
-import Control.Monad
+import System.Random (getStdRandom, randomR)
+import Control.Monad (forM_)
 import Data.Maybe (catMaybes)
-import System.Timeout
+import System.Timeout (timeout)
+import Control.Monad.Trans.Maybe (MaybeT(..))
 
 type Player = String
 
@@ -102,14 +102,13 @@ swing :: Player -> Stats -> Stats
 swing _ s = s { life = (life s) - 1 }
 
 pc :: Player -> IO (Maybe Event)
-pc player = do
-  putStr $ player ++ "> "
-  ms <- timeout 3000000 getLine
-  case ms of
-    (Just s) -> do
-      let cmd = parseCommand s
-      processCommand player cmd
-    Nothing  -> return Nothing
+pc player = runMaybeT $ do
+  input <- MaybeT $ do
+    putStr $ player ++ "> "
+    timeout 3000000 getLine
+  command <- return $ parseCommand input
+  event <- MaybeT $ processCommand player command
+  return event
 
 processCommand :: Player -> Cmd -> IO (Maybe Event)
 processCommand player (Cmd action) = return $ Just (PlayerAction player action)
