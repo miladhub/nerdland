@@ -19,7 +19,7 @@ data Stats = Stats {
 data World = World {
     player  :: Player
   , stats   :: Map Player Stats
-  , stopped :: Bool
+  , running :: Bool
   }
   deriving (Show, Eq)
 
@@ -56,11 +56,14 @@ initialWorld = World {
   , stats    = fromList $ (,)
       <$> ["milad", "ogre"]
       <*> [initialStats]
-  , stopped  = False
+  , running  = True
   }
 
 main :: IO ()
-main = loop initialWorld
+main = do
+  putStrLn "Starting game (press '?' for help)"
+  loop initialWorld
+  putStrLn "Bye!"
 
 loop :: World -> IO ()
 loop world = do
@@ -68,11 +71,13 @@ loop world = do
   let players = keys $ stats world
       actions = fmap (turn $ player world) players
   events <- (fmap catMaybes) $ sequence $ nature : actions
-  forM_ events describe
   let newWorld = foldl think world events
-  if stopped newWorld
-    then putStrLn "Stopping..."
-    else loop newWorld
+  if running newWorld
+    then do
+      forM_ events describe
+      loop newWorld
+    else
+      return ()
   where
     turn player name =
       if player /= name then
@@ -99,7 +104,7 @@ think world (PlayerAction player Swing) =
   in world {
     stats = adjustWithKey swing opponent (stats world)
   }
-think world WorldStop = world { stopped = True }
+think world WorldStop = world { running = False }
 think world _ = world
 
 move :: Dir -> Player -> Stats -> Stats
@@ -120,28 +125,25 @@ pc player = runMaybeT $ do
 getInput :: Player -> IO (Maybe String)
 getInput player = do
   putStr $ player ++ "> "
-  l <- timeout 3000000 getLine
-  case l of
-    (Just i) -> return (Just i)
-    Nothing -> do
-      putStrLn "(aborted)"
-      return Nothing
+  c <- timeout 3000000 getChar
+  putStrLn ""
+  return $ (flip (:) []) <$> c
 
 parseCommand :: String -> Cmd
 parseCommand s = case s of
-  "up"    -> Cmd $ Move U
-  "down"  -> Cmd $ Move D
-  "left"  -> Cmd $ Move L
-  "right" -> Cmd $ Move R
-  "swing" -> Cmd Swing
-  "help"  -> Help
-  "quit"  -> Quit
-  _       -> Other s
+  "w" -> Cmd $ Move U
+  "s" -> Cmd $ Move D
+  "a" -> Cmd $ Move L
+  "d" -> Cmd $ Move R
+  "x" -> Cmd Swing
+  "?" -> Help
+  "q" -> Quit
+  _   -> Other s
 
 processCommand :: Player -> Cmd -> IO (Maybe Event)
 processCommand player (Cmd action) = return $ Just (PlayerAction player action)
 processCommand player Help = do
-  putStrLn "Commands: up, down, left, right, swing, help, quit"
+  putStrLn "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
   return Nothing
 processCommand player Quit = return $ Just WorldStop
 processCommand player (Other o) = do
