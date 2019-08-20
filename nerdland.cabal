@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9326cca3537554dcf1181b4990bd11c87e7c3231ade05c83ca2bd6286f8c0830
+-- hash: 55dcd8278cce1f77bc749d763d1325568257d4f0aea241afd9770c00976eaf35
 
 name:           nerdland
 version:        0.1.0.0
@@ -35,6 +35,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , mtl
     , random
     , transformers
   default-language: Haskell2010
@@ -49,6 +50,7 @@ executable nerdland-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , mtl
     , nerdland
     , random
     , transformers
@@ -65,6 +67,7 @@ test-suite nerdland-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , mtl
     , nerdland
     , random
     , transformers
