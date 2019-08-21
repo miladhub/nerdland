@@ -8,7 +8,6 @@ import Control.Monad (forM_)
 import Data.Maybe (catMaybes, maybe)
 import System.Timeout (timeout)
 import Control.Monad.Trans.Maybe (MaybeT(..))
-import Control.Monad.Reader (ReaderT(..), ask)
 import Control.Monad.State (State(..), put, get, runState)
 
 --
