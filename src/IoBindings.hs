@@ -19,11 +19,6 @@ pcCmdIo player = runMaybeT $ do
 getInput :: Player -> IO (Maybe String)
 getInput player = do
   putStr $ player ++ "> "
---  l <- getLine
---  return (Just l)
---  c <- getChar
---  putStrLn ""
---  return $ (flip (:) []) <$> (Just c)
   c <- timeout 3000000 getChar
   putStrLn ""
   return $ (flip (:) []) <$> c

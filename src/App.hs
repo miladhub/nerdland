@@ -8,12 +8,14 @@ module App (
   , Dir(..)
   , Channel(..)
   , loop
-  , next) where
+  , next
+  ) where
 
-import Data.Map (Map, fromList, keys, adjustWithKey)
-import Control.Monad (forM_)
-import Data.Maybe (catMaybes, maybe)
+import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
+import Control.Monad (Monad(..), forM_)
+import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe)
 import Control.Monad.Trans.Maybe (MaybeT(..))
+import Prelude hiding (lookup)
 
 type Player = String
 
@@ -105,12 +107,31 @@ think world (PlayerAction player (Move d)) =
     stats = adjustWithKey (move d) player (stats world)
   }
 think world (PlayerAction player Swing) =
-  let opponent = head $ filter (/= player) $ keys $ stats world
-  in world {
-    stats = adjustWithKey swing opponent (stats world)
-  }
+  let opponents = filter (/= player) $ keys $ stats world
+      inRange   = filter (closeToPlayer world player) opponents
+  in
+    if (length inRange > 0)
+      then
+        let opponent = head inRange
+        in world {
+          stats = adjustWithKey swing opponent (stats world)
+        }
+      else
+        world
+  
 think world WorldStop = world { running = False }
 think world _ = world
+
+closeToPlayer :: World -> Player -> Player -> Bool
+closeToPlayer world player opponent = fromMaybe False $ do
+  oppStats <- lookup opponent $ stats world
+  playerStats <- lookup player $ stats world
+  let xo = x oppStats
+      yo = y oppStats
+      xp = x playerStats
+      yp = y playerStats
+      dist = (xo - xp)^2 + (yo - yp)^2
+  return (dist <= 2)
 
 move :: Dir -> Player -> Stats -> Stats
 move U _ s = s { x = (x s) + 1 }
