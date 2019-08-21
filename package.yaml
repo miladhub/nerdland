@@ -25,6 +25,7 @@ dependencies:
 - random
 - transformers
 - mtl
+- hspec
 
 library:
   source-dirs: src

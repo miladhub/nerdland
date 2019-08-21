@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 55dcd8278cce1f77bc749d763d1325568257d4f0aea241afd9770c00976eaf35
+-- hash: 217b9930a2bae8ea8e2cadd916b5209bb0935f62e51a99066035a468c13f179f
 
 name:           nerdland
 version:        0.1.0.0
@@ -27,7 +27,8 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      App
+      IoBindings
   other-modules:
       Paths_nerdland
   hs-source-dirs:
@@ -35,6 +36,7 @@ library
   build-depends:
       base >=4.7 && <5
     , containers
+    , hspec
     , mtl
     , random
     , transformers
@@ -50,6 +52,7 @@ executable nerdland-exe
   build-depends:
       base >=4.7 && <5
     , containers
+    , hspec
     , mtl
     , nerdland
     , random
@@ -67,6 +70,7 @@ test-suite nerdland-test
   build-depends:
       base >=4.7 && <5
     , containers
+    , hspec
     , mtl
     , nerdland
     , random
