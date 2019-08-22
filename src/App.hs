@@ -2,7 +2,6 @@ module App (
     Player
   , Stats(..)
   , World(..)
-  , Action(..)
   , Event(..)
   , Cmd(..)
   , Dir(..)
@@ -33,20 +32,17 @@ data World = World {
   }
   deriving (Show, Eq)
 
-data Action =
-    Move Dir
-  | Swing
-  deriving (Eq, Show)
-
 data Event =
-    PlayerAction Player Action
+    Moved Player Dir
+  | Swinged Player Player
   | Rain
   | Earthquake
   | WorldStop
   deriving (Eq, Show)
 
 data Cmd =
-    Cmd Action
+    Move Dir
+  | Swing
   | Help
   | Quit
   | Other String
@@ -57,7 +53,7 @@ data Dir = U | D | L | R
 
 class Monad m => Channel m where
   pcCmd   :: Player -> m (Maybe Cmd)
-  npc     :: Player -> m (Maybe Event)
+  npcCmd  :: Player -> m (Maybe Cmd)
   nature  :: m (Maybe Event)
   display :: String -> m ()
 
@@ -77,17 +73,16 @@ next :: Channel m => World -> m ([Event], World)
 next world = do
   display $ show world
   let players = keys $ stats world
-      actions = fmap (turn $ player world) players
+      actions = fmap (turn world) players
   events <- (fmap catMaybes) $ sequence $ nature : actions
   let newWorld = foldl think world events
   return (events, newWorld)
-  where
-    turn player name =
-      if player /= name then
-        npc name
-      else
-        pc name
 
+turn world name =
+  let cmd = if player world == name then pcCmd else npcCmd
+  in runMaybeT $ do
+    command <- MaybeT $ cmd name
+    MaybeT $ processCommand world name command
 --
 -- Internals
 --
@@ -97,30 +92,52 @@ describe Earthquake =
   Just "Rumble..."
 describe Rain =
   Just "It starts raining."
-describe (PlayerAction player action) =
-  Just $ "[" ++ player ++ "] " ++ (show action)
+describe (Moved player dir) =
+  Just $ "[" ++ player ++ "] moved " ++ (show dir)
+describe (Swinged player opponent) =
+  Just $ "[" ++ player ++ "] swinged " ++ opponent
 describe _ = Nothing
 
 think :: World -> Event -> World
-think world (PlayerAction player (Move d)) =
+think world (Moved player dir) =
   world {
-    stats = adjustWithKey (move d) player (stats world)
+    stats = adjustWithKey (move dir) player (stats world)
   }
-think world (PlayerAction player Swing) =
+think world (Swinged player opponent) =
+  world {
+    stats = adjustWithKey swing opponent (stats world)
+  }
+think world WorldStop = world { running = False }
+think world _ = world
+
+move :: Dir -> Player -> Stats -> Stats
+move U _ s = s { x = (x s) + 1 }
+move D _ s = s { x = (x s) - 1 }
+move R _ s = s { y = (y s) + 1 }
+move L _ s = s { y = (y s) - 1 }
+
+swing :: Player -> Stats -> Stats
+swing _ s = s { life = (life s) - 1 }
+
+processCommand :: Channel m => World -> Player -> Cmd -> m (Maybe Event)
+processCommand world player (Move dir) = return $ Just (Moved player dir)
+processCommand world player Swing =
   let opponents = filter (/= player) $ keys $ stats world
       inRange   = filter (closeToPlayer world player) opponents
   in
     if (length inRange > 0)
-      then
+      then do
         let opponent = head inRange
-        in world {
-          stats = adjustWithKey swing opponent (stats world)
-        }
+        return $ Just $ Swinged player opponent
       else
-        world
-  
-think world WorldStop = world { running = False }
-think world _ = world
+        return Nothing
+processCommand world player Help = do
+  display "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
+  return Nothing
+processCommand world player Quit = return $ Just WorldStop
+processCommand world player (Other o) = do
+  display $ "Bad command: " ++ o
+  return Nothing
 
 closeToPlayer :: World -> Player -> Player -> Bool
 closeToPlayer world player opponent = fromMaybe False $ do
@@ -132,29 +149,5 @@ closeToPlayer world player opponent = fromMaybe False $ do
       yp = y playerStats
       dist = (xo - xp)^2 + (yo - yp)^2
   return (dist <= 2)
-
-move :: Dir -> Player -> Stats -> Stats
-move U _ s = s { x = (x s) + 1 }
-move D _ s = s { x = (x s) - 1 }
-move R _ s = s { y = (y s) + 1 }
-move L _ s = s { y = (y s) - 1 }
-
-swing :: Player -> Stats -> Stats
-swing _ s = s { life = (life s) - 1 }
-
-pc :: Channel m => Player -> m (Maybe Event)
-pc player = runMaybeT $ do
-  command <- MaybeT $ pcCmd player
-  MaybeT $ processCommand player command
-
-processCommand :: Channel m => Player -> Cmd -> m (Maybe Event)
-processCommand player (Cmd action) = return $ Just (PlayerAction player action)
-processCommand player Help = do
-  display "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
-  return Nothing
-processCommand player Quit = return $ Just WorldStop
-processCommand player (Other o) = do
-  display $ "Bad command: " ++ o
-  return Nothing
 
 

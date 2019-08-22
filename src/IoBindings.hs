@@ -7,7 +7,7 @@ import Control.Monad.Trans.Maybe (MaybeT(..))
 
 instance Channel IO where
   pcCmd   = pcCmdIo
-  npc     = npcIo
+  npcCmd  = npcIo
   nature  = natureIo
   display = putStrLn
 
@@ -25,26 +25,25 @@ getInput player = do
 
 parseCommand :: String -> Cmd
 parseCommand s = case s of
-  "w" -> Cmd $ Move U
-  "s" -> Cmd $ Move D
-  "a" -> Cmd $ Move L
-  "d" -> Cmd $ Move R
-  "x" -> Cmd Swing
+  "w" -> Move U
+  "s" -> Move D
+  "a" -> Move L
+  "d" -> Move R
+  "x" -> Swing
   "?" -> Help
   "q" -> Quit
   _   -> Other s
 
-npcIo :: Player -> IO (Maybe Event)
+npcIo :: Player -> IO (Maybe Cmd)
 npcIo player = do
   dice <- rollDice
-  return $ (PlayerAction player)
-    <$> case dice of
-      1 -> Just $ Move U
-      2 -> Just $ Move D
-      3 -> Just $ Move L
-      4 -> Just $ Move R
-      5 -> Just Swing
-      _ -> Nothing
+  return $ case dice of
+    1 -> Just $ Move U
+    2 -> Just $ Move D
+    3 -> Just $ Move L
+    4 -> Just $ Move R
+    5 -> Just Swing
+    _ -> Nothing
 
 rollDice :: IO Int
 rollDice = getStdRandom (randomR (1, 20))
