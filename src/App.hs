@@ -35,6 +35,7 @@ data World = World {
 data Event =
     Moved Player Dir
   | Swinged Player Player
+  | Missed Player
   | Rain
   | Earthquake
   | WorldStop
@@ -95,7 +96,9 @@ describe Rain =
 describe (Moved player dir) =
   Just $ "[" ++ player ++ "] moved " ++ (show dir)
 describe (Swinged player opponent) =
-  Just $ "[" ++ player ++ "] swinged " ++ opponent
+  Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
+describe (Missed player) = 
+  Just $ "[" ++ player ++ "] missed!"
 describe _ = Nothing
 
 think :: World -> Event -> World
@@ -130,7 +133,7 @@ processCommand world player Swing =
         let opponent = head inRange
         return $ Just $ Swinged player opponent
       else
-        return Nothing
+        return $ Just $ Missed player
 processCommand world player Help = do
   display "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
   return Nothing
