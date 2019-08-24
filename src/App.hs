@@ -1,14 +1,4 @@
-module App (
-    Player
-  , Stats(..)
-  , World(..)
-  , Event(..)
-  , Cmd(..)
-  , Dir(..)
-  , Channel(..)
-  , loop
-  , next
-  ) where
+module App where
 
 import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
 import Control.Monad (Monad(..), forM_)
@@ -58,6 +48,20 @@ class Monad m => Channel m where
   nature  :: m (Maybe Event)
   display :: String -> m ()
 
+game :: Channel m => World -> m ()
+game world = do
+  intro world
+  loop world
+  bye
+
+intro :: Channel m => World -> m ()
+intro world = do
+  display "Starting game (press '?' for help)"
+
+bye :: Channel m => m ()
+bye = do
+  display "Bye!"
+
 loop :: Channel m => World -> m ()
 loop world = do
   (events, newWorld) <- next world
@@ -68,7 +72,7 @@ loop world = do
     else
       return ()
   where
-    showDesc = maybe (return ()) display . describe
+    showDesc = maybe (return ()) display . descrEvent
 
 next :: Channel m => World -> m ([Event], World)
 next world = do
@@ -79,27 +83,25 @@ next world = do
   let newWorld = foldl think world events
   return (events, newWorld)
 
+turn :: Channel m => World -> Player -> m (Maybe Event)
 turn world name =
   let cmd = if player world == name then pcCmd else npcCmd
   in runMaybeT $ do
     command <- MaybeT $ cmd name
     MaybeT $ processCommand world name command
---
--- Internals
---
 
-describe :: Event -> Maybe String
-describe Earthquake =
+descrEvent :: Event -> Maybe String
+descrEvent Earthquake =
   Just "Rumble..."
-describe Rain =
+descrEvent Rain =
   Just "It starts raining."
-describe (Moved player dir) =
+descrEvent (Moved player dir) =
   Just $ "[" ++ player ++ "] moved " ++ (show dir)
-describe (Swinged player opponent) =
+descrEvent (Swinged player opponent) =
   Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
-describe (Missed player) = 
+descrEvent (Missed player) = 
   Just $ "[" ++ player ++ "] missed!"
-describe _ = Nothing
+descrEvent _ = Nothing
 
 think :: World -> Event -> World
 think world (Moved player dir) =

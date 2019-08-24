@@ -23,7 +23,5 @@ main :: IO ()
 main = do
   hSetBuffering stdin NoBuffering
   hSetBuffering stdout NoBuffering
-  putStrLn "Starting game (press '?' for help)"
-  loop initialWorld
-  putStrLn "Bye!"
+  game initialWorld
 
