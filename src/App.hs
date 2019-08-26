@@ -1,10 +1,11 @@
 module App where
 
 import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
-import Control.Monad (Monad(..), forM_)
+import Control.Monad (Monad(..), forM_, forM)
 import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Prelude hiding (lookup)
+import Data.List (unlines)
 
 type Player = String
 
@@ -67,16 +68,15 @@ loop world = do
   (events, newWorld) <- next world
   if running newWorld
     then do
-      forM_ events showDesc
+      forM_ events (showDesc world newWorld)
       loop newWorld
     else
       return ()
   where
-    showDesc = maybe (return ()) display . descrEvent
+    showDesc world newWorld = maybe (return ()) display . (descrEvent world newWorld)
 
 next :: Channel m => World -> m ([Event], World)
 next world = do
-  display $ show world
   let players = keys $ stats world
       actions = fmap (turn world) players
   events <- (fmap catMaybes) $ sequence $ nature : actions
@@ -90,18 +90,28 @@ turn world name =
     command <- MaybeT $ cmd name
     MaybeT $ processCommand world name command
 
-descrEvent :: Event -> Maybe String
-descrEvent Earthquake =
+descrEvent :: World -> World -> Event -> Maybe String
+descrEvent _ _ Earthquake =
   Just "Rumble..."
-descrEvent Rain =
+descrEvent _ _ Rain =
   Just "It starts raining."
-descrEvent (Moved player dir) =
-  Just $ "[" ++ player ++ "] moved " ++ (show dir)
-descrEvent (Swinged player opponent) =
+descrEvent world newWorld (Moved moving dir) =
+  if length sees > 0
+    then Just $ unlines sees
+  else
+    Nothing
+  where
+    p              = player newWorld
+    players        = keys $ stats newWorld
+    opponents      = filter (/= p) players
+    inRange        = filter (canSee newWorld) opponents
+    canSee w other = playerIsAtDistance 10 w (player w) other
+    sees           = fmap (\np -> "You see " ++ np) inRange
+descrEvent _ _ (Swinged player opponent) =
   Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
-descrEvent (Missed player) = 
+descrEvent _ _ (Missed player) = 
   Just $ "[" ++ player ++ "] missed!"
-descrEvent _ = Nothing
+descrEvent _ _ _ = Nothing
 
 think :: World -> Event -> World
 think world (Moved player dir) =
@@ -130,7 +140,7 @@ processCommand world player Swing =
   let opponents = filter (/= player) $ keys $ stats world
       inRange   = filter (closeToPlayer world player) opponents
   in
-    if (length inRange > 0)
+    if length inRange > 0
       then do
         let opponent = head inRange
         return $ Just $ Swinged player opponent
@@ -145,7 +155,10 @@ processCommand world player (Other o) = do
   return Nothing
 
 closeToPlayer :: World -> Player -> Player -> Bool
-closeToPlayer world player opponent = fromMaybe False $ do
+closeToPlayer = playerIsAtDistance 2
+
+playerIsAtDistance :: Int -> World -> Player -> Player -> Bool
+playerIsAtDistance lim world player opponent = fromMaybe False $ do
   oppStats <- lookup opponent $ stats world
   playerStats <- lookup player $ stats world
   let xo = x oppStats
@@ -153,6 +166,5 @@ closeToPlayer world player opponent = fromMaybe False $ do
       xp = x playerStats
       yp = y playerStats
       dist = (xo - xp)^2 + (yo - yp)^2
-  return (dist <= 2)
-
+  return (dist <= lim)
 

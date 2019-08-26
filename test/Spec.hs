@@ -4,6 +4,7 @@ import App
 import Data.Map (fromList)
 import Control.Monad.State (State(..), put, get, runState)
 import Test.Hspec
+import Data.List (isInfixOf)
 
 initialStats = Stats {
     x    = 10
@@ -52,14 +53,17 @@ main = hspec $ do
   describe "Game" $ do
     it "stop after quit command" $ do
       (running $ snd $ fst afterQuit) `shouldBe` False
-    it "logs player actions" $ do
-      elem "[milad] moved U" (msgs $ snd final) `shouldBe` True
+    it "does not log player actions" $ do
+      containsString "milad" (msgs $ snd final) `shouldBe` False
     it "logs npc actions" $ do
-      elem "[ogre] moved D" (msgs $ snd final) `shouldBe` True
+      containsString "ogre" (msgs $ snd final) `shouldBe` True
 
 --
 -- Test bindings
 --
+
+containsString :: String -> [String] -> Bool
+containsString s ss = elem True $ isInfixOf s <$> ss
 
 data MockState = MockState {
     events :: MockEvents
