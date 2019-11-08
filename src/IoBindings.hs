@@ -16,23 +16,23 @@ pcCmdIo player = runMaybeT $ do
   input <- MaybeT $ getInput player
   return $ parseCommand input
 
-getInput :: Player -> IO (Maybe String)
+getInput :: Player -> IO (Maybe Char)
 getInput player = do
   putStr $ player ++ "> "
   c <- timeout 3000000 getChar
   putStrLn ""
-  return $ (flip (:) []) <$> c
+  return  c
 
-parseCommand :: String -> Cmd
-parseCommand s = case s of
-  "w" -> Move U
-  "s" -> Move D
-  "a" -> Move L
-  "d" -> Move R
-  "x" -> Swing
-  "?" -> Help
-  "q" -> Quit
-  _   -> Other s
+parseCommand :: Char -> Cmd
+parseCommand c = case c of
+  'w' -> Move U
+  's' -> Move D
+  'a' -> Move L
+  'd' -> Move R
+  'x' -> Swing
+  '?' -> Help
+  'q' -> Quit
+  _   -> Other [c]
 
 npcIo :: Player -> IO (Maybe Cmd)
 npcIo player = do

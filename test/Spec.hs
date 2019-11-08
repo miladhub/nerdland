@@ -6,17 +6,21 @@ import Control.Monad.State (State(..), put, get, runState)
 import Test.Hspec
 import Data.List (isInfixOf)
 
-initialStats = Stats {
-    x    = 10
+pcStats = Stats {
+    x    = 0
+  , y    = 10
+  , life = 10
+  }
+npcStats = Stats {
+    x    = 4
   , y    = 10
   , life = 10
   }
 
+
 initialWorld = World {
     player   = "milad"
-  , stats    = fromList $ (,)
-      <$> ["milad", "ogre"]
-      <*> [initialStats]
+  , stats    = fromList [ ("milad", pcStats), ("ogre", npcStats) ]
   , running  = True
   }
 

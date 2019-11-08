@@ -58,6 +58,9 @@ game world = do
 intro :: Channel m => World -> m ()
 intro world = do
   display "Starting game (press '?' for help)"
+  case descOthers world of
+    Just d  -> display d
+    Nothing -> return ()
 
 bye :: Channel m => m ()
 bye = do
@@ -73,7 +76,8 @@ loop world = do
     else
       return ()
   where
-    showDesc world newWorld = maybe (return ()) display . (descrEvent world newWorld)
+    showDesc world newWorld =
+      maybe (return ()) display . (descrEvent world newWorld)
 
 next :: Channel m => World -> m ([Event], World)
 next world = do
@@ -104,7 +108,8 @@ descrEvent world newWorld (Moved moving dir) =
     p              = player newWorld
     players        = keys $ stats newWorld
     opponents      = filter (/= p) players
-    inRange        = filter (canSee newWorld) opponents
+    inRange        = filter isNew opponents
+    isNew other    = (canSee newWorld other) && not (canSee world other)
     canSee w other = playerIsAtDistance 10 w (player w) other
     sees           = fmap (\np -> "You see " ++ np) inRange
 descrEvent _ _ (Swinged player opponent) =
@@ -112,6 +117,21 @@ descrEvent _ _ (Swinged player opponent) =
 descrEvent _ _ (Missed player) = 
   Just $ "[" ++ player ++ "] missed!"
 descrEvent _ _ _ = Nothing
+
+descOthers :: World -> Maybe String
+descOthers newWorld =
+  if length sees > 0
+    then Just $ unlines sees
+  else
+    Nothing
+  where
+    p              = player newWorld
+    players        = keys $ stats newWorld
+    opponents      = filter (/= p) players
+    inRange        = filter isNew opponents
+    isNew other    = canSee newWorld other
+    canSee w other = playerIsAtDistance 10 w (player w) other
+    sees           = fmap (\np -> "You see " ++ np) inRange
 
 think :: World -> Event -> World
 think world (Moved player dir) =
