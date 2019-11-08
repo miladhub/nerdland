@@ -10,3 +10,7 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 
     stack build
     stack exec nerdland-exe
+
+# Developing
+
+    ghcid -c "stack ghci --main-is nerdland:exe:nerdland-exe"
