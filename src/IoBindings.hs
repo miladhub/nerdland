@@ -11,14 +11,14 @@ instance Channel IO where
   nature  = natureIo
   display = putStrLn
 
-pcCmdIo :: Player -> IO (Maybe Cmd)
-pcCmdIo player = runMaybeT $ do
-  input <- MaybeT $ getInput player
+pcCmdIo :: IO (Maybe Cmd)
+pcCmdIo = runMaybeT $ do
+  input <- MaybeT $ getInput
   return $ parseCommand input
 
-getInput :: Player -> IO (Maybe Char)
-getInput player = do
-  putStr $ player ++ "> "
+getInput :: IO (Maybe Char)
+getInput = do
+  putStr "> "
   c <- timeout 3000000 getChar
   putStrLn ""
   return  c
@@ -34,8 +34,8 @@ parseCommand c = case c of
   'q' -> Quit
   _   -> Other [c]
 
-npcIo :: Player -> IO (Maybe Cmd)
-npcIo player = do
+npcIo :: IO (Maybe Cmd)
+npcIo = do
   dice <- rollDice
   return $ case dice of
     1 -> Just $ Move U

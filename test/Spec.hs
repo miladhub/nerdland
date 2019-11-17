@@ -85,12 +85,12 @@ data MockEvents = MockEvents {
 type MockChannel = State MockState
 
 instance Channel MockChannel where
-  pcCmd _ = do
+  pcCmd = do
     state <- get
     let es = events state
     put state { events = es { pcCmds = tail (pcCmds es) } }
     return $ head (pcCmds es)
-  npcCmd _ = do
+  npcCmd = do
     state <- get
     let es = events state
     put state { events = es { npcCmds = tail (npcCmds es) } }

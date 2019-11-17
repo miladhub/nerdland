@@ -44,8 +44,8 @@ data Dir = U | D | L | R
   deriving (Eq, Show)
 
 class Monad m => Channel m where
-  pcCmd   :: Player -> m (Maybe Cmd)
-  npcCmd  :: Player -> m (Maybe Cmd)
+  pcCmd   :: m (Maybe Cmd)
+  npcCmd  :: m (Maybe Cmd)
   nature  :: m (Maybe Event)
   display :: String -> m ()
 
@@ -91,7 +91,7 @@ turn :: Channel m => World -> Player -> m (Maybe Event)
 turn world name =
   let cmd = if player world == name then pcCmd else npcCmd
   in runMaybeT $ do
-    command <- MaybeT $ cmd name
+    command <- MaybeT $ cmd
     MaybeT $ processCommand world name command
 
 descrEvent :: World -> World -> Event -> Maybe String
