@@ -33,8 +33,8 @@ myNext   = next initialWorld :: MockChannel ([Event], World)
 justQuit = MockState {
     events = MockEvents {
       pcCmds    = [quit],
-      npcCmds   = [Nothing],
-      natEvents = [Nothing]
+      npcCmds   = [],
+      natEvents = []
     }
   , msgs = []
   }
@@ -44,8 +44,8 @@ start =
   MockState {
     events = MockEvents {
       pcCmds    = [up, quit],
-      npcCmds   = [down, Nothing],
-      natEvents = [Nothing, Nothing]
+      npcCmds   = [down],
+      natEvents = []
     }
   , msgs = []
   }
@@ -88,20 +88,27 @@ instance Channel MockChannel where
   pcCmd = do
     state <- get
     let es = events state
-    put state { events = es { pcCmds = tail (pcCmds es) } }
-    return $ head (pcCmds es)
+    put state { events = es { pcCmds = tail' (pcCmds es) } }
+    return $ head' (pcCmds es)
   npcCmd = do
     state <- get
     let es = events state
-    put state { events = es { npcCmds = tail (npcCmds es) } }
-    return $ head (npcCmds es)
+    put state { events = es { npcCmds = tail' (npcCmds es) } }
+    return $ head' (npcCmds es)
   nature = do
     state <- get
     let es = events state
-    put state { events = es { natEvents = tail (natEvents es) } }
-    return $ head (natEvents es)
+    put state { events = es { natEvents = tail' (natEvents es) } }
+    return $ head' (natEvents es)
   display d = do
     state <- get
     put state { msgs = (msgs state) ++ [d] }
     return ()
 
+head' :: [Maybe t] -> Maybe t
+head' [] = Nothing
+head' l = head l
+
+tail' :: [t] -> [t]
+tail' [] = []
+tail' (_:t) = t
