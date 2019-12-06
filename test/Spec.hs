@@ -17,7 +17,6 @@ npcStats = Stats {
   , life = 10
   }
 
-
 initialWorld = World {
     player   = "milad"
   , stats    = fromList [ ("milad", pcStats), ("ogre", npcStats) ]
@@ -50,7 +49,7 @@ start =
   , msgs = []
   }
 myLoop   = loop initialWorld :: MockChannel ()
-final    = runState myLoop start
+final    = snd $ runState myLoop start
 
 main :: IO ()
 main = hspec $ do
@@ -58,9 +57,9 @@ main = hspec $ do
     it "stop after quit command" $ do
       (running $ snd $ fst afterQuit) `shouldBe` False
     it "does not log player actions" $ do
-      containsString "milad" (msgs $ snd final) `shouldBe` False
+      containsString "milad" (msgs final) `shouldBe` False
     it "logs npc actions" $ do
-      containsString "ogre" (msgs $ snd final) `shouldBe` True
+      containsString "ogre" (msgs final) `shouldBe` True
 
 --
 -- Test bindings

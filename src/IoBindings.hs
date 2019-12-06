@@ -20,8 +20,7 @@ getInput :: IO (Maybe Char)
 getInput = do
   putStr "> "
   c <- timeout 3000000 getChar
-  putStrLn ""
-  return  c
+  return c
 
 parseCommand :: Char -> Cmd
 parseCommand c = case c of
