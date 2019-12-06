@@ -23,5 +23,6 @@ main :: IO ()
 main = do
   hSetBuffering stdin NoBuffering
   hSetBuffering stdout NoBuffering
+  hSetEcho stdin False
   game initialWorld
 

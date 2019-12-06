@@ -17,10 +17,7 @@ pcCmdIo = runMaybeT $ do
   return $ parseCommand input
 
 getInput :: IO (Maybe Char)
-getInput = do
-  putStr "> "
-  c <- timeout 3000000 getChar
-  return c
+getInput = timeout 3000000 getChar
 
 parseCommand :: Char -> Cmd
 parseCommand c = case c of
