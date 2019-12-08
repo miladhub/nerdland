@@ -101,7 +101,7 @@ descrEvent _ _ Rain =
   Just "It starts raining."
 descrEvent world newWorld (Moved moving dir) =
   if length sees > 0
-    then Just $ unlines sees
+    then Just $ unlines sees ++ unlines lost
   else
     Nothing
   where
@@ -109,9 +109,12 @@ descrEvent world newWorld (Moved moving dir) =
     players        = keys $ stats newWorld
     opponents      = filter (/= p) players
     inRange        = filter isNew opponents
+    lostRange      = filter isLost opponents
     isNew other    = (canSee newWorld other) && not (canSee world other)
+    isLost other   = (canSee world other) && not (canSee newWorld other)
     canSee w other = playerIsAtDistance 10 w (player w) other
     sees           = fmap (\np -> "You see " ++ np) inRange
+    lost           = fmap (\np -> "You lost sight of " ++ np) lostRange
 descrEvent _ _ (Swinged player opponent) =
   Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
 descrEvent _ _ (Missed player) = 
