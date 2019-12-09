@@ -60,6 +60,27 @@ main = hspec $ do
       containsString "milad" (msgs final) `shouldBe` False
     it "logs npc actions" $ do
       containsString "ogre" (msgs final) `shouldBe` True
+  describe "Events" $ do
+    it "should alert when ogre is in sight" $ do
+      (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just "fine")
+  where
+    w1 = World {
+        player   = "milad"
+      , stats    = fromList [ ("milad", s 1 0), ("ogre", s 13 0) ]
+      , running  = True
+      }
+    w2 = World {   
+        player   = "milad"
+      , stats    = fromList [ ("milad", s 1 0), ("ogre", s 10 0) ]
+      , running  = True
+      }
+    s x' y' = Stats {
+        x    = x'
+      , y    = y'
+      , life = 10
+      }
+
+
 
 --
 -- Test bindings
