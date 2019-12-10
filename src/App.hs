@@ -100,7 +100,7 @@ descrEvent _ _ Earthquake =
 descrEvent _ _ Rain =
   Just "It starts raining."
 descrEvent world newWorld (Moved moving dir) =
-  if length sees > 0
+  if length sees > 0 || length lost > 0
     then Just $ unlines sees ++ unlines lost
   else
     Nothing
@@ -189,5 +189,5 @@ playerIsAtDistance lim world player opponent = fromMaybe False $ do
       xp = x playerStats
       yp = y playerStats
       dist = (xo - xp)^2 + (yo - yp)^2
-  return (dist <= lim)
+  return (dist <= lim^2)
 

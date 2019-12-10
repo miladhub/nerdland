@@ -7,12 +7,12 @@ import Test.Hspec
 import Data.List (isInfixOf)
 
 pcStats = Stats {
-    x    = 0
+    x    = 10
   , y    = 10
   , life = 10
   }
 npcStats = Stats {
-    x    = 4
+    x    = 0
   , y    = 10
   , life = 10
   }
@@ -48,7 +48,7 @@ start =
     }
   , msgs = []
   }
-myLoop   = loop initialWorld :: MockChannel ()
+myLoop   = game initialWorld :: MockChannel ()
 final    = snd $ runState myLoop start
 
 main :: IO ()
@@ -58,11 +58,13 @@ main = hspec $ do
       (running $ snd $ fst afterQuit) `shouldBe` False
     it "does not log player actions" $ do
       containsString "milad" (msgs final) `shouldBe` False
-    it "logs npc actions" $ do
-      containsString "ogre" (msgs final) `shouldBe` True
+    it "logs when npcs become visible" $ do
+      containsString "see ogre" (msgs final) `shouldBe` True
+    it "logs when npcs are out of sight" $ do
+      containsString "lost sight of ogre" (msgs final) `shouldBe` True
   describe "Events" $ do
     it "should alert when ogre is in sight" $ do
-      (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just "fine")
+      (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just "You see ogre\n")
   where
     w1 = World {
         player   = "milad"
