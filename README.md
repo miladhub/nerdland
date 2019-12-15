@@ -14,3 +14,8 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 # Developing
 
     ghcid -c "stack ghci --main-is nerdland:exe:nerdland-exe"
+
+# Tests in REPL
+
+    stack ghci --main-is nerdland:nerdland-test
+

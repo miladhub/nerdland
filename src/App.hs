@@ -27,9 +27,13 @@ data Event =
     Moved Player Dir
   | Swinged Player Player
   | Missed Player
-  | Rain
-  | Earthquake
+  | Nature NatEvent
   | WorldStop
+  deriving (Eq, Show)
+
+data NatEvent =
+    Rain
+  | Earthquake
   deriving (Eq, Show)
 
 data Cmd =
@@ -46,7 +50,7 @@ data Dir = U | D | L | R
 class Monad m => Channel m where
   pcCmd   :: m (Maybe Cmd)
   npcCmd  :: m (Maybe Cmd)
-  nature  :: m (Maybe Event)
+  nature  :: m (Maybe NatEvent)
   display :: String -> m ()
 
 game :: Channel m => World -> m ()
@@ -81,9 +85,10 @@ loop world = do
 
 next :: Channel m => World -> m ([Event], World)
 next world = do
-  let players = keys $ stats world
-      actions = fmap (turn world) players
-  events <- (fmap catMaybes) $ sequence $ nature : actions
+  let players   = keys $ stats world
+      actions   = fmap (turn world) players
+      natEvents = (fmap . fmap) Nature nature
+  events <- (fmap catMaybes) $ sequence $ natEvents : actions
   let newWorld = foldl think world events
   return (events, newWorld)
 
@@ -95,9 +100,9 @@ turn world name =
     MaybeT $ processCommand world name command
 
 descrEvent :: World -> World -> Event -> Maybe String
-descrEvent _ _ Earthquake =
+descrEvent _ _ (Nature Earthquake) =
   Just "Rumble..."
-descrEvent _ _ Rain =
+descrEvent _ _ (Nature Rain) =
   Just "It starts raining."
 descrEvent world newWorld (Moved moving dir) =
   if length sees > 0 || length lost > 0

@@ -44,7 +44,7 @@ npcIo = do
 rollDice :: IO Int
 rollDice = getStdRandom (randomR (1, 20))
 
-natureIo :: IO (Maybe Event)
+natureIo :: IO (Maybe NatEvent)
 natureIo = do
   dice <- rollDice
   return $ case dice of

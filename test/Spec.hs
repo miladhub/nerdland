@@ -100,7 +100,7 @@ data MockState = MockState {
 data MockEvents = MockEvents {
     pcCmds    :: [Maybe Cmd]
   , npcCmds   :: [Maybe Cmd]
-  , natEvents :: [Maybe Event]
+  , natEvents :: [Maybe NatEvent]
   }
   deriving (Eq, Show)
 
