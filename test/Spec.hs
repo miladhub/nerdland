@@ -64,7 +64,7 @@ main = hspec $ do
       containsString "lost sight of ogre" (msgs final) `shouldBe` True
   describe "Events" $ do
     it "should alert when ogre is in sight" $ do
-      (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just "You see ogre\n")
+      Just isInfixOf <*> (Just "You see ogre\n") <*> (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just True)
   where
     w1 = World {
         player   = "milad"

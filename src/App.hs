@@ -2,7 +2,7 @@ module App where
 
 import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
 import Control.Monad (Monad(..), forM_, forM)
-import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe)
+import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe, fromJust)
 import Control.Monad.Trans.Maybe (MaybeT(..))
 import Prelude hiding (lookup)
 import Data.List (unlines)
@@ -105,21 +105,24 @@ descrEvent _ _ (Nature Earthquake) =
 descrEvent _ _ (Nature Rain) =
   Just "It starts raining."
 descrEvent world newWorld (Moved moving dir) =
-  if length sees > 0 || length lost > 0
-    then Just $ unlines sees ++ unlines lost
-  else
-    Nothing
+  case desc of
+    [] -> Nothing
+    d  -> Just $ unlines d
   where
+    desc           = sees <> lost <> dist
     p              = player newWorld
     players        = keys $ stats newWorld
     opponents      = filter (/= p) players
     inRange        = filter isNew opponents
     lostRange      = filter isLost opponents
+    visibles       = filter visible opponents
     isNew other    = (canSee newWorld other) && not (canSee world other)
     isLost other   = (canSee world other) && not (canSee newWorld other)
+    visible other  = canSee newWorld other
     canSee w other = playerIsAtDistance 10 w (player w) other
     sees           = fmap (\np -> "You see " ++ np) inRange
     lost           = fmap (\np -> "You lost sight of " ++ np) lostRange
+    dist           = fmap (\np -> np ++ ": " ++ fromJust (show <$> (distance newWorld p np))) visibles
 descrEvent _ _ (Swinged player opponent) =
   Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
 descrEvent _ _ (Missed player) = 
@@ -196,3 +199,13 @@ playerIsAtDistance lim world player opponent = fromMaybe False $ do
       dist = (xo - xp)^2 + (yo - yp)^2
   return (dist <= lim^2)
 
+distance :: World -> Player -> Player -> Maybe Integer
+distance world player opponent = do
+  oppStats <- lookup opponent $ stats world
+  playerStats <- lookup player $ stats world
+  let xo = x oppStats
+      yo = y oppStats
+      xp = x playerStats
+      yp = y playerStats
+      dist = (xo - xp)^2 + (yo - yp)^2
+  return $ round . sqrt . fromIntegral $ dist
