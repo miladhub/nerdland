@@ -12,10 +12,29 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
     stack exec nerdland-exe
 
 # Developing
+  Just open the REPL via `stack ghci` or use <https://github.com/ndmitchell/ghcid>:
 
     ghcid -c "stack ghci --main-is nerdland:exe:nerdland-exe"
 
-# Tests in REPL
+# Running the tests
+
+  Easy way:
+  
+    stack test
+
+  In REPL:
 
     stack ghci --main-is nerdland:nerdland-test
+    ...
+    λ> main
 
+    Game
+      stop after quit command
+      does not log player actions
+      logs when npcs become visible
+      logs when npcs are out of sight
+    Events
+      should alert when ogre is in sight
+
+    Finished in 0.0019 seconds
+    5 examples, 0 failures
