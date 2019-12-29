@@ -48,7 +48,7 @@ start =
     }
   , msgs = []
   }
-myLoop   = game initialWorld :: MockChannel ()
+myLoop   = game initialWorld :: MockChannel World
 final    = snd $ runState myLoop start
 
 main :: IO ()

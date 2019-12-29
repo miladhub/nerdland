@@ -53,11 +53,12 @@ class Monad m => Channel m where
   nature  :: m (Maybe NatEvent)
   display :: String -> m ()
 
-game :: Channel m => World -> m ()
+game :: Channel m => World -> m World
 game world = do
   intro world
-  loop world
+  final <- loop world
   bye
+  return final
 
 intro :: Channel m => World -> m ()
 intro world = do
@@ -70,7 +71,7 @@ bye :: Channel m => m ()
 bye = do
   display "Bye!"
 
-loop :: Channel m => World -> m ()
+loop :: Channel m => World -> m World
 loop world = do
   (events, newWorld) <- next world
   if running newWorld
@@ -78,7 +79,7 @@ loop world = do
       forM_ events (showDesc world newWorld)
       loop newWorld
     else
-      return ()
+      return newWorld
   where
     showDesc world newWorld =
       maybe (return ()) display . (descrEvent world newWorld)

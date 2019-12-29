@@ -2,7 +2,7 @@ module Main where
 
 import App
 import IoBindings
-import Data.Map (fromList)
+import Data.Map (fromList, toList)
 import System.IO
 import System.Environment (getArgs)
 import Data.Map (Map, fromList)
@@ -14,7 +14,8 @@ main = do
   hSetEcho stdin False
   args <- getArgs
   world <- readWorld "world.txt"
-  game world
+  final <- game world
+  save final "save.txt"
 
 readWorld :: String -> IO World
 readWorld file = do
@@ -44,4 +45,16 @@ readStat ws =
       y      = read $ ws !! 2
       life   = read $ ws !! 3
   in (player, Stats x y life)
-  
+
+save :: World -> String -> IO ()
+save world file =
+  writeFile file $ writeStats world
+
+writeStats :: World -> String
+writeStats world =
+  let players     = toList $ stats world
+      pc          = filter (\(p, _) -> p == player world) players
+      npcs        = filter (\(p, _) -> p /= player world) players
+      toRow (p,s) = unwords [p, show $ x s, show $ y s, show $ life s]
+      rows        = fmap toRow $ pc ++ npcs
+  in unlines rows
