@@ -12,6 +12,7 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
     stack exec nerdland-exe
 
 # Developing
+
   Just open the REPL via `stack ghci` or use <https://github.com/ndmitchell/ghcid>:
 
     ghcid -c "stack ghci --main-is nerdland:exe:nerdland-exe"
@@ -38,3 +39,19 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 
     Finished in 0.0019 seconds
     5 examples, 0 failures
+
+# TODO
+
+* Simplify logic by making it depend on current world only
+* Make killing NPCs possible
+* Create quests as simple goals made of a `World -> Bool` predicate such as "you killed everyone"
+* Define spawn events that add NPCs to the world
+* Make random event have effects such as damage to `life` attribute
+* Define spawn events that add NPCs to the world
+* Make moving switch between areas - e.g., rooms
+* Make moving more visual - e.g., draw a grid of the current area
+* Add items such as more/less powerful weapons
+* Add levels
+* Add pre-defined behaviours such as "ogre", "wolf", etc, that determine basic interaction patterns - e.g., attacks, ignores, etc (I'm thinking of using records such as `data Behaviour = { attacks :: Distance -> Bool, ... }`)
+* Make quests depend on other quests
+* Allow defining quests from a DSL - e.g., parse them from a text file (could use `parsec` for this)
