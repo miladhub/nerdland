@@ -13,7 +13,9 @@ main = do
   hSetBuffering stdout NoBuffering
   hSetEcho stdin False
   args <- getArgs
-  world <- readWorld "world.txt"
+  let file = if (length args > 0) then args !! 0 else "world.txt"
+  putStrLn $ "Using file " ++ file
+  world <- readWorld file
   final <- game world [killAll]
   save final "save.txt"
 
