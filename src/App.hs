@@ -1,6 +1,7 @@
 module App where
 
 import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
+import qualified Data.Map (filter) 
 import Control.Monad (Monad(..), forM_, forM)
 import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe, fromJust)
 import Control.Monad.Trans.Maybe (MaybeT(..))
@@ -26,10 +27,23 @@ data World = World {
 data Event =
     Moved Player Dir
   | Swinged Player Player
+  | QuestCompleted Quest
   | Missed Player
   | Nature NatEvent
   | WorldStop
   deriving (Eq, Show)
+
+data Quest = Quest
+  {
+    name :: String
+  , done :: World -> Bool
+  }
+
+instance Show Quest where
+  show = name
+
+instance Eq Quest where
+  q1 == q2 = (name q1) == (name q2)
 
 data NatEvent =
     Rain
@@ -53,11 +67,11 @@ class Monad m => Channel m where
   nature  :: m (Maybe NatEvent)
   display :: String -> m ()
 
-game :: Channel m => World -> m World
-game world = do
+game :: Channel m => World -> [Quest] -> m World
+game world quests = do
   intro world
-  final <- loop world
-  bye
+  final <- loop world quests
+  display "Bye!"
   return final
 
 intro :: Channel m => World -> m ()
@@ -67,31 +81,32 @@ intro world = do
     Just d  -> display d
     Nothing -> return ()
 
-bye :: Channel m => m ()
-bye = do
-  display "Bye!"
-
-loop :: Channel m => World -> m World
-loop world = do
-  (events, newWorld) <- next world
+loop :: Channel m => World -> [Quest] -> m World
+loop world quests = do
+  (events, newWorld, newQuests) <- next world quests
   if running newWorld
     then do
-      forM_ events (showDesc world newWorld)
-      loop newWorld
+      displayJust . descOthers $ newWorld
+      forM_ events (displayJust . descEvent)
+      loop newWorld newQuests
     else
       return newWorld
   where
-    showDesc world newWorld =
-      maybe (return ()) display . (descrEvent world newWorld)
+    displayJust =
+      maybe (return ()) display
 
-next :: Channel m => World -> m ([Event], World)
-next world = do
-  let players   = keys $ stats world
-      actions   = fmap (turn world) players
-      natEvents = (fmap . fmap) Nature nature
-  events <- (fmap catMaybes) $ sequence $ natEvents : actions
-  let newWorld = foldl think world events
-  return (events, newWorld)
+next :: Channel m => World -> [Quest] -> m ([Event], World, [Quest])
+next world quests = do
+  let actions     = fmap (turn world) $ players world
+      natEvent    = (fmap . fmap) Nature nature
+      complQuests = QuestCompleted <$> filter isDone quests
+  events <- (fmap catMaybes) $ sequence $ natEvent : actions
+  let newWorld = foldl think world $ events ++ complQuests
+  final <- processDead newWorld
+  return (events ++ complQuests, final, filter (not . isDone) quests)
+  where
+    isDone :: Quest -> Bool
+    isDone = flip done $ world
 
 turn :: Channel m => World -> Player -> m (Maybe Event)
 turn world name =
@@ -100,50 +115,49 @@ turn world name =
     command <- MaybeT $ cmd
     MaybeT $ processCommand world name command
 
-descrEvent :: World -> World -> Event -> Maybe String
-descrEvent _ _ (Nature Earthquake) =
+processDead :: Channel m => World -> m World
+processDead world = do
+  let dead = filter (isDead world) $ players world
+  forM_ dead $
+    \d -> display $ d ++ " is dead."
+  return world { stats = Data.Map.filter (\s -> life s > 0) (stats world) }
+
+isDead :: World -> Player -> Bool
+isDead world player =
+  let stat = lookup player $ stats world
+  in case stat of
+    Nothing -> False
+    Just s  -> life s == 0
+
+descEvent :: Event -> Maybe String
+descEvent (Nature Earthquake) =
   Just "Rumble..."
-descrEvent _ _ (Nature Rain) =
+descEvent (Nature Rain) =
   Just "It starts raining."
-descrEvent world newWorld (Moved moving dir) =
-  case desc of
+descEvent (Swinged player opponent) =
+  Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
+descEvent (Missed player) = 
+  Just $ "[" ++ player ++ "] missed!"
+descEvent (QuestCompleted quest) =
+  Just $ "Quest " ++ (name quest) ++ " completed!"
+descEvent _ = Nothing
+
+descOthers :: World -> Maybe String
+descOthers world =
+  case dist of
     [] -> Nothing
     d  -> Just $ unlines d
   where
-    desc           = sees <> lost <> dist
-    p              = player newWorld
-    players        = keys $ stats newWorld
-    opponents      = filter (/= p) players
-    inRange        = filter isNew opponents
-    lostRange      = filter isLost opponents
-    visibles       = filter visible opponents
-    isNew other    = (canSee newWorld other) && not (canSee world other)
-    isLost other   = (canSee world other) && not (canSee newWorld other)
-    visible other  = canSee newWorld other
-    canSee w other = playerIsAtDistance 10 w (player w) other
-    sees           = fmap (\np -> "You see " ++ np) inRange
-    lost           = fmap (\np -> "You lost sight of " ++ np) lostRange
-    dist           = fmap (\np -> np ++ ": " ++ fromJust (show <$> (distance newWorld p np))) visibles
-descrEvent _ _ (Swinged player opponent) =
-  Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
-descrEvent _ _ (Missed player) = 
-  Just $ "[" ++ player ++ "] missed!"
-descrEvent _ _ _ = Nothing
+    dist          = fmap (\np -> np ++ ": " ++ fromJust
+      (show <$> (distance world p np)))
+      visibles
+    p             = player world
+    visibles      = filter visible opponents
+    visible other = playerIsAtDistance 10 world p other
+    opponents     = filter (/= p) $ players world
 
-descOthers :: World -> Maybe String
-descOthers newWorld =
-  if length sees > 0
-    then Just $ unlines sees
-  else
-    Nothing
-  where
-    p              = player newWorld
-    players        = keys $ stats newWorld
-    opponents      = filter (/= p) players
-    inRange        = filter isNew opponents
-    isNew other    = canSee newWorld other
-    canSee w other = playerIsAtDistance 10 w (player w) other
-    sees           = fmap (\np -> "You see " ++ np) inRange
+players :: World -> [Player]
+players world = keys $ stats world
 
 think :: World -> Event -> World
 think world (Moved player dir) =
@@ -189,16 +203,12 @@ processCommand world player (Other o) = do
 closeToPlayer :: World -> Player -> Player -> Bool
 closeToPlayer = playerIsAtDistance 2
 
-playerIsAtDistance :: Int -> World -> Player -> Player -> Bool
-playerIsAtDistance lim world player opponent = fromMaybe False $ do
-  oppStats <- lookup opponent $ stats world
-  playerStats <- lookup player $ stats world
-  let xo = x oppStats
-      yo = y oppStats
-      xp = x playerStats
-      yp = y playerStats
-      dist = (xo - xp)^2 + (yo - yp)^2
-  return (dist <= lim^2)
+playerIsAtDistance :: Integer -> World -> Player -> Player -> Bool
+playerIsAtDistance lim world player opponent =
+  let dist = distance world player opponent
+  in case dist of
+    Nothing -> False
+    Just d -> d <= lim
 
 distance :: World -> Player -> Player -> Maybe Integer
 distance world player opponent = do

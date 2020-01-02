@@ -28,17 +28,6 @@ down = Just (Move D)
 quit = Just Quit
 help = Just Help
 
-myNext   = next initialWorld :: MockChannel ([Event], World)
-justQuit = MockState {
-    events = MockEvents {
-      pcCmds    = [quit],
-      npcCmds   = [],
-      natEvents = []
-    }
-  , msgs = []
-  }
-afterQuit = runState myNext justQuit
-
 start =
   MockState {
     events = MockEvents {
@@ -48,41 +37,14 @@ start =
     }
   , msgs = []
   }
-myLoop   = game initialWorld :: MockChannel World
+myLoop   = game initialWorld [] :: MockChannel World
 final    = snd $ runState myLoop start
 
 main :: IO ()
 main = hspec $ do
   describe "Game" $ do
-    it "stop after quit command" $ do
-      (running $ snd $ fst afterQuit) `shouldBe` False
     it "does not log player actions" $ do
       containsString "milad" (msgs final) `shouldBe` False
-    it "logs when npcs become visible" $ do
-      containsString "see ogre" (msgs final) `shouldBe` True
-    it "logs when npcs are out of sight" $ do
-      containsString "lost sight of ogre" (msgs final) `shouldBe` True
-  describe "Events" $ do
-    it "should alert when ogre is in sight" $ do
-      Just isInfixOf <*> (Just "You see ogre\n") <*> (descrEvent w1 w2 (Moved "ogre" U)) `shouldBe` (Just True)
-  where
-    w1 = World {
-        player   = "milad"
-      , stats    = fromList [ ("milad", s 1 0), ("ogre", s 13 0) ]
-      , running  = True
-      }
-    w2 = World {   
-        player   = "milad"
-      , stats    = fromList [ ("milad", s 1 0), ("ogre", s 10 0) ]
-      , running  = True
-      }
-    s x' y' = Stats {
-        x    = x'
-      , y    = y'
-      , life = 10
-      }
-
-
 
 --
 -- Test bindings

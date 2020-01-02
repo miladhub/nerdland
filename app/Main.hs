@@ -14,8 +14,17 @@ main = do
   hSetEcho stdin False
   args <- getArgs
   world <- readWorld "world.txt"
-  final <- game world
+  final <- game world [killAll]
   save final "save.txt"
+
+killAll :: Quest
+killAll = Quest
+  {
+    name = "Kill All"
+  , done = \world ->
+      let players = toList $ stats world
+      in length players == 1
+  }
 
 readWorld :: String -> IO World
 readWorld file = do
