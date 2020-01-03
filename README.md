@@ -50,9 +50,7 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 
 # TODO
 
-* Simplify logic by making it depend on current world only
-* Make killing NPCs possible
-* Create quests as simple goals made of a `World -> Bool` predicate such as "you killed everyone"
+* Add tests
 * Define spawn events that add NPCs to the world
 * Make random event have effects such as damage to `life` attribute
 * Define spawn events that add NPCs to the world
