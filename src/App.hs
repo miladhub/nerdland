@@ -69,6 +69,7 @@ class Monad m => Channel m where
 
 game :: Channel m => World -> [Quest] -> m World
 game world quests = do
+  display "Starting game (press '?' for help)"
   intro world
   final <- loop world quests
   display "Bye!"
@@ -76,7 +77,6 @@ game world quests = do
 
 intro :: Channel m => World -> m ()
 intro world = do
-  display "Starting game (press '?' for help)"
   case descOthers world of
     Just d  -> display d
     Nothing -> return ()

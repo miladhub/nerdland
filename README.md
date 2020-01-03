@@ -21,6 +21,8 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 
   Same, expect now the main belong to the tests:
 
+    stack ghci --main-is nerdland:nerdland-test
+
     ghcid -c "stack ghci --main-is nerdland:nerdland-test"
 
 # Running the tests
