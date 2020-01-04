@@ -29,8 +29,10 @@ data Event =
   | Swinged Player Player
   | QuestCompleted Quest
   | Missed Player
+  | PlayerDied Player
   | Nature NatEvent
   | WorldStop
+  | BadCommandOrHelp
   deriving (Eq, Show)
 
 data Quest = Quest
@@ -83,7 +85,9 @@ intro world = do
 
 loop :: Channel m => World -> [Quest] -> m World
 loop world quests = do
-  (events, newWorld, newQuests) <- next world quests
+  maybeActions <- sequence $ fmap (turn world) $ players world
+  maybeNature  <- nature
+  let (events, newWorld, newQuests) = next world quests maybeActions maybeNature
   if running newWorld
     then do
       displayJust . descOthers $ newWorld
@@ -95,32 +99,52 @@ loop world quests = do
     displayJust =
       maybe (return ()) display
 
-next :: Channel m => World -> [Quest] -> m ([Event], World, [Quest])
-next world quests = do
-  let actions     = fmap (turn world) $ players world
-      natEvent    = (fmap . fmap) Nature nature
-      complQuests = QuestCompleted <$> filter isDone quests
-  events <- (fmap catMaybes) $ sequence $ natEvent : actions
-  let newWorld = foldl think world $ events ++ complQuests
-  final <- processDead newWorld
-  return (events ++ complQuests, final, filter (not . isDone) quests)
+turn :: Channel m => World -> Player -> m (Maybe Event)
+turn world name = runMaybeT $ do
+  cmd <- MaybeT $ if player world == name then pcCmd else npcCmd
+  return $ processCommand world name cmd
+
+processCommand :: World -> Player -> Cmd -> Event
+processCommand world player (Move dir) =
+  Moved player dir
+processCommand world player Swing =
+  let opponents = filter (/= player) $ keys $ stats world
+      inRange   = filter (closeToPlayer world player) opponents
+  in
+    if length inRange > 0
+      then
+        let opponent = head inRange
+        in Swinged player opponent
+      else
+        Missed player
+  where
+    closeToPlayer = playerIsAtDistance 2
+processCommand world player Help =
+  BadCommandOrHelp
+processCommand world player Quit =
+  WorldStop
+processCommand world player (Other o) =
+  BadCommandOrHelp
+
+next :: World -> [Quest] -> [Maybe Event] -> Maybe NatEvent -> ([Event], World, [Quest])
+next world quests playerEvents maybeNature =
+  let complQuests   = QuestCompleted <$> filter isDone quests
+      activeQuests  = filter (not . isDone) quests
+      natureEvent   = Nature <$> maybeNature
+      events        = catMaybes (natureEvent : playerEvents) ++ complQuests
+      newWorld      = foldl think world $ events
+      (final, dead) = processDead newWorld
+      deadEvents    = PlayerDied <$> dead
+  in (events ++ deadEvents, final, activeQuests)
   where
     isDone :: Quest -> Bool
     isDone = flip done $ world
 
-turn :: Channel m => World -> Player -> m (Maybe Event)
-turn world name =
-  let cmd = if player world == name then pcCmd else npcCmd
-  in runMaybeT $ do
-    command <- MaybeT $ cmd
-    MaybeT $ processCommand world name command
-
-processDead :: Channel m => World -> m World
-processDead world = do
-  let dead = filter (isDead world) $ players world
-  forM_ dead $
-    \d -> display $ d ++ " is dead."
-  return world { stats = Data.Map.filter (\s -> life s > 0) (stats world) }
+processDead :: World -> (World, [Player])
+processDead world =
+  let dead     = filter (isDead world) $ players world
+      newWorld = world { stats = Data.Map.filter (\s -> life s > 0) (stats world) }
+  in (newWorld, dead)
 
 isDead :: World -> Player -> Bool
 isDead world player =
@@ -140,6 +164,10 @@ descEvent (Missed player) =
   Just $ "[" ++ player ++ "] missed!"
 descEvent (QuestCompleted quest) =
   Just $ "Quest " ++ (name quest) ++ " completed!"
+descEvent (PlayerDied died) =
+  Just $ died ++ " is dead."
+descEvent BadCommandOrHelp =
+  Just "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
 descEvent _ = Nothing
 
 descOthers :: World -> Maybe String
@@ -179,29 +207,6 @@ move L _ s = s { y = (y s) - 1 }
 
 swing :: Player -> Stats -> Stats
 swing _ s = s { life = (life s) - 1 }
-
-processCommand :: Channel m => World -> Player -> Cmd -> m (Maybe Event)
-processCommand world player (Move dir) = return $ Just (Moved player dir)
-processCommand world player Swing =
-  let opponents = filter (/= player) $ keys $ stats world
-      inRange   = filter (closeToPlayer world player) opponents
-  in
-    if length inRange > 0
-      then do
-        let opponent = head inRange
-        return $ Just $ Swinged player opponent
-      else
-        return $ Just $ Missed player
-processCommand world player Help = do
-  display "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
-  return Nothing
-processCommand world player Quit = return $ Just WorldStop
-processCommand world player (Other o) = do
-  display $ "Bad command: " ++ o
-  return Nothing
-
-closeToPlayer :: World -> Player -> Player -> Bool
-closeToPlayer = playerIsAtDistance 2
 
 playerIsAtDistance :: Integer -> World -> Player -> Player -> Bool
 playerIsAtDistance lim world player opponent =
