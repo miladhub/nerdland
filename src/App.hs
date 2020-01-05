@@ -144,20 +144,27 @@ descOthers world =
 
 next :: World -> [Quest] -> [Maybe PlayerCmd] -> Maybe NatEvent -> ([Event], World, [Quest])
 next world quests maybeCommands maybeNature =
-  let complQuests   = QuestCompleted <$> filter isDone quests
-      activeQuests  = filter (not . isDone) quests
-      natureEvent   = Nature <$> maybeNature
+  let natureEvent   = Nature <$> maybeNature
       playerEvents  = (fmap . fmap) cmdToEvent maybeCommands 
-      events        = catMaybes (natureEvent : playerEvents) ++ complQuests
+      events        = catMaybes $ natureEvent : playerEvents
       newWorld      = foldl think world $ events
       (final, dead) = processDead newWorld
       deadEvents    = PlayerDied <$> dead
-  in (events ++ deadEvents, final, activeQuests)
+      (compl, act)  = processQuests newWorld quests
+      questEvents   = QuestCompleted <$> compl
+  in (events ++ deadEvents ++ questEvents, final, act)
+  where
+    cmdToEvent :: PlayerCmd -> Event
+    cmdToEvent pc = processCommand world (playerName pc) (cmd pc)
+
+processQuests :: World -> [Quest] -> ([Quest], [Quest])
+processQuests world quests =
+  let completed = filter isDone quests
+      active    = filter (not . isDone) quests
+  in (completed, active)
   where
     isDone :: Quest -> Bool
     isDone = flip done $ world
-    cmdToEvent :: PlayerCmd -> Event
-    cmdToEvent pc = processCommand world (playerName pc) (cmd pc)
 
 processCommand :: World -> Player -> Cmd -> Event
 processCommand world player (Move dir) =
