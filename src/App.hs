@@ -78,8 +78,8 @@ class Monad m => Channel m where
 
 game :: Channel m => World -> [Quest] -> m World
 game world quests = do
-  display "Starting game (press '?' for help)"
-  intro world
+  --display "Starting game (press '?' for help)"
+  --intro world
   final <- loop world quests
   display "Bye!"
   return final
@@ -150,7 +150,7 @@ next world quests maybeCommands maybeNature =
       newWorld      = foldl think world $ events
       (final, dead) = processDead newWorld
       deadEvents    = PlayerDied <$> dead
-      (compl, act)  = processQuests newWorld quests
+      (compl, act)  = processQuests final quests
       questEvents   = QuestCompleted <$> compl
   in (events ++ deadEvents ++ questEvents, final, act)
   where
