@@ -148,9 +148,9 @@ next world quests maybeCommands maybeNature =
       playerEvents  = (fmap . fmap) cmdToEvent maybeCommands 
       events        = catMaybes $ natureEvent : playerEvents
       newWorld      = foldl think world $ events
-      (final, dead) = processDead newWorld
-      deadEvents    = PlayerDied <$> dead
+      (final, dead) = removeDead newWorld
       (compl, act)  = processQuests final quests
+      deadEvents    = PlayerDied <$> dead
       questEvents   = QuestCompleted <$> compl
   in (events ++ deadEvents ++ questEvents, final, act)
   where
@@ -188,8 +188,8 @@ processCommand world player Quit =
 processCommand world player (Other o) =
   BadCommandOrHelp
 
-processDead :: World -> (World, [Player])
-processDead world =
+removeDead :: World -> (World, [Player])
+removeDead world =
   let dead     = filter (isDead world) $ players world
       newWorld = world { stats = Data.Map.filter (\s -> life s > 0) (stats world) }
   in (newWorld, dead)
