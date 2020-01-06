@@ -144,15 +144,14 @@ descOthers world =
 
 next :: World -> [Quest] -> [Maybe PlayerCmd] -> Maybe NatEvent -> ([Event], World, [Quest])
 next world quests maybeCommands maybeNature =
-  let natureEvent   = Nature <$> maybeNature
-      playerEvents  = (fmap . fmap) cmdToEvent maybeCommands 
-      events        = catMaybes $ natureEvent : playerEvents
-      newWorld      = foldl think world $ events
-      (final, dead) = removeDead newWorld
-      (compl, act)  = processQuests final quests
-      deadEvents    = PlayerDied <$> dead
-      questEvents   = QuestCompleted <$> compl
-  in (events ++ deadEvents ++ questEvents, final, act)
+  let natureEvent      = Nature <$> maybeNature
+      playerEvents     = (fmap . fmap) cmdToEvent maybeCommands
+      events           = catMaybes $ natureEvent : playerEvents
+      (newWorld, dead) = removeDead $ foldl think world $ events
+      (compl, act)     = processQuests newWorld quests
+      deadEvents       = PlayerDied <$> dead
+      questEvents      = QuestCompleted <$> compl
+  in (events ++ deadEvents ++ questEvents, newWorld, act)
   where
     cmdToEvent :: PlayerCmd -> Event
     cmdToEvent pc = processCommand world (playerName pc) (cmd pc)

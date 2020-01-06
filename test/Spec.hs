@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 
 import App
-import Data.Map (fromList)
+import Data.Map (fromList, toList)
 import Control.Monad.State (State(..), put, get, runState)
 import Test.Hspec
 import Data.List (isInfixOf)
@@ -12,39 +12,55 @@ pcStats = Stats {
   , life = 10
   }
 npcStats = Stats {
-    x    = 0
+    x    = 10
   , y    = 10
   , life = 10
   }
-
 initialWorld = World {
     player   = "milad"
   , stats    = fromList [ ("milad", pcStats), ("ogre", npcStats) ]
   , running  = True
   }
 
-up   = Just (Move U)
-down = Just (Move D)
-quit = Just Quit
-help = Just Help
-
-start =
+myLoop   = game initialWorld [] :: MockChannel World
+upQuitDown =
   MockState {
     events = MockEvents {
-      pcCmds    = [up, quit],
-      npcCmds   = [down],
+      pcCmds    = [Just (Move U), Just Quit],
+      npcCmds   = [Just (Move U)],
       natEvents = []
     }
   , msgs = []
   }
-myLoop   = game initialWorld [] :: MockChannel World
-final    = snd $ runState myLoop start
+(_, final) = runState myLoop upQuitDown
+
+killAll = Quest
+  {
+    name = "Kill All"
+  , done = \world ->
+      let players = toList $ stats world
+      in length players == 1
+  }
+swingLoop = game initialWorld [killAll] :: MockChannel World
+swing10times =
+  MockState {
+    events = MockEvents {
+      pcCmds    = (take 10 $ repeat $ Just Swing) ++ [Just Quit],
+      npcCmds   = [],
+      natEvents = []
+    }
+  , msgs = []
+  }
+(_, swinged) = runState swingLoop swing10times
 
 main :: IO ()
 main = hspec $ do
   describe "Game" $ do
     it "does not log player actions" $ do
       containsString "milad" (msgs final) `shouldBe` False
+    it "enables quests" $ do
+      containsString "ogre is dead" (msgs swinged) `shouldBe` True
+      containsString "Quest Kill All completed!" (msgs swinged) `shouldBe` True
 
 --
 -- Test bindings
