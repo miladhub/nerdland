@@ -50,12 +50,11 @@ The game logic is decoupled from intrastructure, Hexagonal architecture style, b
 
 # TODO
 
-* Add tests
+* Draw current area - e.g., grid
+* Make moving switch between areas - e.g., rooms
 * Define spawn events that add NPCs to the world
 * Make random event have effects such as damage to `life` attribute
 * Define spawn events that add NPCs to the world
-* Make moving switch between areas - e.g., rooms
-* Make moving more visual - e.g., draw a grid of the current area
 * Add items such as more/less powerful weapons
 * Add levels
 * Add pre-defined behaviours such as "ogre", "wolf", etc, that determine basic interaction patterns - e.g., attacks, ignores, etc (I'm thinking of using records such as `data Behaviour = { attacks :: Distance -> Bool, ... }`)
