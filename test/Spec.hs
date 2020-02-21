@@ -32,7 +32,7 @@ upQuitDown =
     }
   , msgs = []
   }
-(_, final) = runState myLoop upQuitDown
+(_, final) = runState myLoop upQuitDown :: (World, MockState)
 
 killAll = Quest
   {
@@ -51,7 +51,7 @@ swing10times =
     }
   , msgs = []
   }
-(_, swinged) = runState swingLoop swing10times
+(_, swinged) = runState swingLoop swing10times :: (World, MockState)
 
 main :: IO ()
 main = hspec $ do
