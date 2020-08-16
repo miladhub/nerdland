@@ -1,24 +1,26 @@
 module App where
 
-import Data.Map (Map, fromList, keys, adjustWithKey, lookup)
-import qualified Data.Map (filter) 
-import Control.Monad (Monad(..), forM_, forM)
-import Data.Maybe (Maybe(..), catMaybes, maybe, fromMaybe, fromJust)
-import Control.Monad.Trans.Maybe (MaybeT(..))
-import Prelude hiding (lookup)
-import Data.List (unlines)
+import           Control.Monad             (Monad (..), forM, forM_)
+import           Control.Monad.Trans.Maybe (MaybeT (..))
+import           Data.List                 (unlines)
+import           Data.Map                  (Map, adjustWithKey, fromList, keys,
+                                            lookup)
+import qualified Data.Map                  (filter)
+import           Data.Maybe                (Maybe (..), catMaybes, fromJust,
+                                            fromMaybe, maybe)
+import           Prelude                   hiding (lookup)
 
 type Player = String
 
 data Stats = Stats {
-    x     :: Int
-  , y     :: Int
-  , life  :: Int
+    x    :: Int
+  , y    :: Int
+  , life :: Int
   }
   deriving (Show, Eq)
 
-data World = World {
-    player  :: Player
+data World = World
+  { player  :: Player
   , stats   :: Map Player Stats
   , running :: Bool
   }
@@ -36,8 +38,7 @@ data Event =
   deriving (Eq, Show)
 
 data Quest = Quest
-  {
-    name :: String
+  { name :: String
   , done :: World -> Bool
   }
 
@@ -53,8 +54,7 @@ data NatEvent =
   deriving (Eq, Show)
 
 data PlayerCmd = PlayerCmd
-  {
-    cmd  :: Cmd
+  { cmd        :: Cmd
   , playerName :: Player
   }
   deriving (Eq, Show)
@@ -118,7 +118,7 @@ descEvent (Nature Rain) =
   Just "It starts raining."
 descEvent (Swinged player opponent) =
   Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
-descEvent (Missed player) = 
+descEvent (Missed player) =
   Just $ "[" ++ player ++ "] missed!"
 descEvent (QuestCompleted quest) =
   Just $ "Quest " ++ (name quest) ++ " completed!"
@@ -169,7 +169,7 @@ processCommand :: World -> Player -> Cmd -> Event
 processCommand world player (Move dir) =
   Moved player dir
 processCommand world player Swing =
-  let opponents = filter (/= player) $ keys $ stats world
+  let opponents = filter (/= player) $ players world
       inRange   = filter (closeToPlayer world player) opponents
   in
     if length inRange > 0
@@ -182,10 +182,10 @@ processCommand world player Swing =
     closeToPlayer = playerIsAtDistance 2
 processCommand world player Help =
   BadCommandOrHelp
-processCommand world player Quit =
-  WorldStop
 processCommand world player (Other o) =
   BadCommandOrHelp
+processCommand world player Quit =
+  WorldStop
 
 removeDead :: World -> (World, [Player])
 removeDead world =
@@ -199,9 +199,6 @@ isDead world player =
   in case stat of
     Nothing -> False
     Just s  -> life s == 0
-
-players :: World -> [Player]
-players world = keys $ stats world
 
 think :: World -> Event -> World
 think world (Moved player dir) =
@@ -229,15 +226,21 @@ playerIsAtDistance lim world player opponent =
   let dist = distance world player opponent
   in case dist of
     Nothing -> False
-    Just d -> d <= lim
+    Just d  -> d <= lim
 
 distance :: World -> Player -> Player -> Maybe Integer
 distance world player opponent = do
-  oppStats <- lookup opponent $ stats world
-  playerStats <- lookup player $ stats world
+  oppStats <- statsFor world opponent
+  playerStats <- statsFor world player
   let xo = x oppStats
       yo = y oppStats
       xp = x playerStats
       yp = y playerStats
       dist = (xo - xp)^2 + (yo - yp)^2
   return $ round . sqrt . fromIntegral $ dist
+
+players :: World -> [Player]
+players world = keys $ stats world
+
+statsFor :: World -> Player -> Maybe Stats
+statsFor world player = lookup player $ stats world
