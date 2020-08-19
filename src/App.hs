@@ -101,7 +101,7 @@ loop :: Channel m => Game -> m Game
 loop g@(Game world quests) = do
   maybeCommands <- sequence $ fmap (turn world) $ players world
   maybeNature   <- nature
-  let (events, g'@(Game newWorld newQuests)) = runState (next' maybeCommands maybeNature) g
+  let (events, g'@(Game newWorld newQuests)) = runState (next maybeCommands maybeNature) g
   if running newWorld
     then do
       displayJust . descOthers $ newWorld
@@ -118,26 +118,21 @@ turn world name = runMaybeT $ do
   cmd <- MaybeT $ if player world == name then pcCmd else npcCmd
   return $ PlayerCmd cmd name
 
-next' :: [Maybe PlayerCmd] -> Maybe NatEvent -> State Game [Event]
-next' maybeCommands maybeNature = do
-  g <- get
-  let (events, g') = next g maybeCommands maybeNature
-  put g'
-  return events
-
-next :: Game -> [Maybe PlayerCmd] -> Maybe NatEvent -> ([Event], Game)
-next (Game world quests) maybeCommands maybeNature =
+next :: [Maybe PlayerCmd] -> Maybe NatEvent -> State Game [Event]
+next maybeCommands maybeNature = do
+  (Game world quests) <- get
   let natureEvent      = Nature <$> maybeNature
-      playerEvents     = (fmap . fmap) cmdToEvent maybeCommands
+      playerEvents     = (fmap . fmap) (cmdToEvent world) maybeCommands
       events           = catMaybes $ natureEvent : playerEvents
       (newWorld, dead) = removeDead $ foldl think world $ events
       (compl, act)     = processQuests newWorld quests
       deadEvents       = PlayerDied <$> dead
       questEvents      = QuestCompleted <$> compl
-  in (events ++ deadEvents ++ questEvents, (Game newWorld act))
+  put (Game newWorld act)
+  return $ events ++ deadEvents ++ questEvents
   where
-    cmdToEvent :: PlayerCmd -> Event
-    cmdToEvent pc = processCommand world (playerName pc) (cmd pc)
+    cmdToEvent :: World -> PlayerCmd -> Event
+    cmdToEvent world pc = processCommand world (playerName pc) (cmd pc)
 
 processQuests :: World -> [Quest] -> ([Quest], [Quest])
 processQuests world quests =
