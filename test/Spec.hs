@@ -1,10 +1,13 @@
 {-# LANGUAGE FlexibleInstances #-}
 
-import App
-import Data.Map (fromList, toList)
-import Control.Monad.State (State(..), put, get, runState)
-import Test.Hspec
-import Data.List (isInfixOf)
+import           App                 (Channel (..), Cmd (..), Dir (..),
+                                      Event (..), Game (..), NatEvent (..),
+                                      Player (..), Quest (..), Stats (..),
+                                      World (..), game)
+import           Control.Monad.State (State (..), get, put, runState)
+import           Data.List           (isInfixOf)
+import           Data.Map            (fromList, toList)
+import           Test.Hspec
 
 pcStats = Stats {
     x    = 10
@@ -22,7 +25,7 @@ initialWorld = World {
   , running  = True
   }
 
-myLoop   = game initialWorld [] :: MockChannel World
+myLoop   = game (Game initialWorld []) :: MockChannel Game
 upQuitDown =
   MockState {
     events = MockEvents {
@@ -32,7 +35,7 @@ upQuitDown =
     }
   , msgs = []
   }
-(_, final) = runState myLoop upQuitDown :: (World, MockState)
+(_, final) = runState myLoop upQuitDown :: (Game, MockState)
 
 killAll = Quest
   {
@@ -41,7 +44,7 @@ killAll = Quest
       let players = toList $ stats world
       in length players == 1
   }
-swingLoop = game initialWorld [killAll] :: MockChannel World
+swingLoop = game (Game initialWorld [killAll]) :: MockChannel Game
 swing10times =
   MockState {
     events = MockEvents {
@@ -51,7 +54,7 @@ swing10times =
     }
   , msgs = []
   }
-(_, swinged) = runState swingLoop swing10times :: (World, MockState)
+(_, swinged) = runState swingLoop swing10times :: (Game, MockState)
 
 main :: IO ()
 main = hspec $ do
@@ -107,8 +110,8 @@ instance Channel MockChannel where
 
 head' :: [Maybe t] -> Maybe t
 head' [] = Nothing
-head' l = head l
+head' l  = head l
 
 tail' :: [t] -> [t]
-tail' [] = []
+tail' []    = []
 tail' (_:t) = t

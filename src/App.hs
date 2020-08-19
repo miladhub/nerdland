@@ -1,6 +1,7 @@
 module App where
 
 import           Control.Monad             (Monad (..), forM, forM_)
+import           Control.Monad.State
 import           Control.Monad.Trans.Maybe (MaybeT (..))
 import           Data.List                 (unlines)
 import           Data.Map                  (Map, adjustWithKey, fromList, keys,
@@ -16,6 +17,12 @@ data Stats = Stats {
     x    :: Int
   , y    :: Int
   , life :: Int
+  }
+  deriving (Show, Eq)
+
+data Game = Game
+  { world  :: World
+  , quests :: [Quest]
   }
   deriving (Show, Eq)
 
@@ -76,13 +83,13 @@ class Monad m => Channel m where
   nature  :: m (Maybe NatEvent)
   display :: String -> m ()
 
-game :: Channel m => World -> [Quest] -> m World
-game world quests = do
+game :: Channel m => Game -> m Game
+game g = do
   display "Starting game (press '?' for help)"
-  intro world
-  final <- loop world quests
+  intro (world g)
+  g' <- loop g
   display "Bye!"
-  return final
+  return g'
 
 intro :: Channel m => World -> m ()
 intro world = do
@@ -90,18 +97,18 @@ intro world = do
     Just d  -> display d
     Nothing -> return ()
 
-loop :: Channel m => World -> [Quest] -> m World
-loop world quests = do
+loop :: Channel m => Game -> m Game
+loop g@(Game world quests) = do
   maybeCommands <- sequence $ fmap (turn world) $ players world
   maybeNature   <- nature
-  let (events, newWorld, newQuests) = next world quests maybeCommands maybeNature
+  let (events, g'@(Game newWorld newQuests)) = runState (next' maybeCommands maybeNature) g
   if running newWorld
     then do
       displayJust . descOthers $ newWorld
       forM_ events (displayJust . descEvent)
-      loop newWorld newQuests
+      loop $ Game newWorld newQuests
     else
-      return newWorld
+      return $ Game newWorld newQuests
   where
     displayJust =
       maybe (return ()) display
@@ -111,39 +118,15 @@ turn world name = runMaybeT $ do
   cmd <- MaybeT $ if player world == name then pcCmd else npcCmd
   return $ PlayerCmd cmd name
 
-descEvent :: Event -> Maybe String
-descEvent (Nature Earthquake) =
-  Just "Rumble..."
-descEvent (Nature Rain) =
-  Just "It starts raining."
-descEvent (Swinged player opponent) =
-  Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
-descEvent (Missed player) =
-  Just $ "[" ++ player ++ "] missed!"
-descEvent (QuestCompleted quest) =
-  Just $ "Quest " ++ (name quest) ++ " completed!"
-descEvent (PlayerDied died) =
-  Just $ died ++ " is dead."
-descEvent BadCommandOrHelp =
-  Just "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
-descEvent _ = Nothing
+next' :: [Maybe PlayerCmd] -> Maybe NatEvent -> State Game [Event]
+next' maybeCommands maybeNature = do
+  g <- get
+  let (events, g') = next g maybeCommands maybeNature
+  put g'
+  return events
 
-descOthers :: World -> Maybe String
-descOthers world =
-  case dist of
-    [] -> Nothing
-    d  -> Just $ unlines d
-  where
-    dist          = fmap (\np -> np ++ ": " ++ fromJust
-      (show <$> (distance world p np)))
-      visibles
-    p             = player world
-    visibles      = filter visible opponents
-    visible other = playerIsAtDistance 10 world p other
-    opponents     = filter (/= p) $ players world
-
-next :: World -> [Quest] -> [Maybe PlayerCmd] -> Maybe NatEvent -> ([Event], World, [Quest])
-next world quests maybeCommands maybeNature =
+next :: Game -> [Maybe PlayerCmd] -> Maybe NatEvent -> ([Event], Game)
+next (Game world quests) maybeCommands maybeNature =
   let natureEvent      = Nature <$> maybeNature
       playerEvents     = (fmap . fmap) cmdToEvent maybeCommands
       events           = catMaybes $ natureEvent : playerEvents
@@ -151,7 +134,7 @@ next world quests maybeCommands maybeNature =
       (compl, act)     = processQuests newWorld quests
       deadEvents       = PlayerDied <$> dead
       questEvents      = QuestCompleted <$> compl
-  in (events ++ deadEvents ++ questEvents, newWorld, act)
+  in (events ++ deadEvents ++ questEvents, (Game newWorld act))
   where
     cmdToEvent :: PlayerCmd -> Event
     cmdToEvent pc = processCommand world (playerName pc) (cmd pc)
@@ -244,3 +227,35 @@ players world = keys $ stats world
 
 statsFor :: World -> Player -> Maybe Stats
 statsFor world player = lookup player $ stats world
+
+descEvent :: Event -> Maybe String
+descEvent (Nature Earthquake) =
+  Just "Rumble..."
+descEvent (Nature Rain) =
+  Just "It starts raining."
+descEvent (Swinged player opponent) =
+  Just $ "[" ++ player ++ "] swinged " ++ opponent ++ "!"
+descEvent (Missed player) =
+  Just $ "[" ++ player ++ "] missed!"
+descEvent (QuestCompleted quest) =
+  Just $ "Quest " ++ (name quest) ++ " completed!"
+descEvent (PlayerDied died) =
+  Just $ died ++ " is dead."
+descEvent BadCommandOrHelp =
+  Just "Commands: (w) up, (s) down, (a) left, (d) right, (x) swing, (?) help, (x) quit"
+descEvent _ = Nothing
+
+descOthers :: World -> Maybe String
+descOthers world =
+  case dist of
+    [] -> Nothing
+    d  -> Just $ unlines d
+  where
+    dist          = fmap (\np -> np ++ ": " ++ fromJust
+      (show <$> (distance world p np)))
+      visibles
+    p             = player world
+    visibles      = filter visible opponents
+    visible other = playerIsAtDistance 10 world p other
+    opponents     = filter (/= p) $ players world
+

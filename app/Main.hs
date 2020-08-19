@@ -1,6 +1,6 @@
 module Main where
 
-import App
+import App (Game(..), Quest(..), World(..), Stats(..), Player(..), game)
 import IoBindings
 import Data.Map (fromList, toList)
 import System.IO
@@ -16,7 +16,7 @@ main = do
   let file = if (length args > 0) then args !! 0 else "world.txt"
   putStrLn $ "Using file " ++ file
   world <- readWorld file
-  final <- game world [killAll]
+  (Game final _) <- game (Game world [killAll])
   save final "save.txt"
 
 killAll :: Quest
